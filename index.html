@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroSpec — Cognitive Healthcare Pre-Screening Hardware Evaluator</title>
+
+  <!-- Typography: Source Serif 4 (headings), IBM Plex Sans (body), IBM Plex Mono (table data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+  <!-- 1. MANDATORY TOP BANNER (Always visible, solid dark ink strip) -->
+  <aside id="topBanner" class="top-banner" role="alert" aria-live="polite">
+    <div class="banner-inner">
+      <span class="banner-badge">NOTICE</span>
+      <span id="bannerText" class="banner-text">
+        ILLUSTRATIVE MOCKUP. Placeholder numbers, not real results.
+      </span>
+      <!-- Appears only when a custom CSV is uploaded -->
+      <div id="datasetNameContainer" class="dataset-name-container hidden">
+        <label for="datasetNameInput" class="dataset-name-label">Dataset:</label>
+        <input type="text" id="datasetNameInput" class="dataset-name-input" placeholder="e.g. Hospital Pilot Cohort A"
+          value="Uploaded CSV Dataset">
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN DOCUMENT CONTAINER -->
+  <div class="document-container">
+
+    <!-- REPORT HEADER -->
+    <header class="report-header">
+      <div class="header-pretitle"></div>
+      <div class="header-main-row">
+        <div class="header-title-block">
+          <h1 class="report-title">NeuroSpec</h1>
+          <div class="title-placeholder-note"></div>
+          <p class="report-subtitle">
+            Sensor specification and trade-off evaluation for EEG-based cognitive pre-screening programs.
+          </p>
+        </div>
+        <div class="header-actions">
+          <button id="btnDownloadSample" class="btn btn-secondary btn-sm" title="Download a pre-formatted CSV template">
+            Template (CSV)
+          </button>
+          <button id="btnPrint" class="btn btn-secondary btn-sm" title="Print this evaluation as a clean report or PDF">
+            Print / PDF
+          </button>
+          <button id="btnResetAll" class="btn btn-outline btn-sm" title="Restore default placeholder numbers">
+            Reset Defaults
+          </button>
+        </div>
+      </div>
+      <div class="header-rule"></div>
+    </header>
+
+    <!-- WORKBENCH LAYOUT: SIDEBAR CONTROLS + MAIN ANALYSIS -->
+    <div class="workbench-layout">
+
+      <!-- LEFT SIDEBAR: PARAMETERS & ASSUMPTIONS -->
+      <aside class="workbench-sidebar">
+
+        <!-- CONTROLS PANEL -->
+        <section class="sidebar-section" aria-labelledby="controlsHeading">
+          <div class="section-label">Screening Targets</div>
+          <h2 id="controlsHeading" class="section-title">Constraints</h2>
+
+          <div class="control-group">
+            <div class="control-header">
+              <label for="sliderSensitivity" class="control-name">Min. Sensitivity</label>
+              <span class="control-val" id="valSensitivity">85%</span>
+            </div>
+            <div class="control-desc">Patients caught: <span id="patientsCaughtDisplay">85</span> of 100</div>
+            <input type="range" id="sliderSensitivity" min="70" max="95" step="1" value="85" class="range-slider"
+              aria-valuemin="70" aria-valuemax="95" aria-valuenow="85">
+            <div class="slider-bounds">
+              <span>70%</span>
+              <span>85%</span>
+              <span>95%</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-header">
+              <label for="sliderReferrals" class="control-name">Max. Extra Referrals</label>
+              <span class="control-val" id="valReferrals">30 / 100</span>
+            </div>
+            <div class="control-desc">Max false referrals per 100 healthy people</div>
+            <input type="range" id="sliderReferrals" min="10" max="50" step="1" value="30" class="range-slider"
+              aria-valuemin="10" aria-valuemax="50" aria-valuenow="30">
+            <div class="slider-bounds">
+              <span>10</span>
+              <span>30</span>
+              <span>50</span>
+            </div>
+          </div>
+
+          <div class="control-group toggle-group">
+            <label class="checkbox-label" for="toggleNoise">
+              <input type="checkbox" id="toggleNoise" class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">
+                <strong>Simulate noisier sensors</strong>
+                <span class="subtext">Lowers sensitivity by 4.0% to reflect field contact noise (illustrative).</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <!-- EDITABLE COST MODEL -->
+        <section class="sidebar-section" aria-labelledby="costHeading">
+          <div class="section-header-row">
+            <div>
+              <div class="section-label">Unit Economics</div>
+              <h2 id="costHeading" class="section-title">Cost Assumptions</h2>
+            </div>
+            <button id="btnResetCosts" class="link-btn" title="Reset cost assumptions to initial model">
+              Reset
+            </button>
+          </div>
+          <div class="cost-note">Estimates. Replace with vendor quotes.</div>
+
+          <div class="cost-stack">
+            <div class="cost-field">
+              <label for="inputBaseCost" class="cost-label">
+                Base Electronics (₹)
+                <span class="cost-help">Chassis, MCU, power</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputBaseCost" min="500" max="25000" step="100" class="num-input">
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputPerChannelCost" class="cost-label">
+                Cost per Channel (₹)
+                <span class="cost-help">Electrode, lead, preamp</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputPerChannelCost" min="100" max="8000" step="50" class="num-input">
+              </div>
+            </div>
+
+            <div class="tier-grid-label">Sampling Rate Tiers (₹)</div>
+            <div class="tier-inputs-grid">
+              <div class="tier-field">
+                <label for="inputTier62">62 Hz</label>
+                <div class="input-with-symbol">
+                  <span class="symbol">₹</span>
+                  <input type="number" id="inputTier62" min="0" max="10000" step="50" class="num-input-sm">
+                </div>
+              </div>
+
+              <div class="tier-field">
+                <label for="inputTier125">125 Hz</label>
+                <div class="input-with-symbol">
+                  <span class="symbol">₹</span>
+                  <input type="number" id="inputTier125" min="0" max="10000" step="50" class="num-input-sm">
+                </div>
+              </div>
+
+              <div class="tier-field">
+                <label for="inputTier250">250 Hz</label>
+                <div class="input-with-symbol">
+                  <span class="symbol">₹</span>
+                  <input type="number" id="inputTier250" min="0" max="10000" step="50" class="num-input-sm">
+                </div>
+              </div>
+
+              <div class="tier-field">
+                <label for="inputTier500">500 Hz</label>
+                <div class="input-with-symbol">
+                  <span class="symbol">₹</span>
+                  <input type="number" id="inputTier500" min="0" max="15000" step="50" class="num-input-sm">
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CSV UPLOAD -->
+        <section class="sidebar-section" aria-labelledby="uploadHeading">
+          <div class="section-label">Empirical Input</div>
+          <h2 id="uploadHeading" class="section-title">Load Real Results</h2>
+          <p class="sidebar-desc">
+            Replace placeholder test values with data from clinical testing.
+          </p>
+          <div class="csv-upload-box">
+            <input type="file" id="csvFileInput" accept=".csv,text/csv" class="file-input-hidden">
+            <label for="csvFileInput" class="btn btn-secondary btn-full">
+              Choose CSV File
+            </label>
+            <button id="btnReloadPlaceholder" class="link-btn hidden">
+              Reload placeholder data
+            </button>
+            <div id="uploadFeedback" class="upload-feedback" role="status"></div>
+          </div>
+        </section>
+
+      </aside>
+
+      <!-- RIGHT MAIN CONTENT: RECOMMENDATION, CHART, TABLE, NOTES -->
+      <main class="workbench-main">
+
+        <!-- RECOMMENDATION BLOCK -->
+        <section class="main-section" aria-labelledby="recHeading">
+          <div id="recommendationCard" class="recommendation-block">
+            <!-- Dynamically populated by app.js -->
+            <div class="rec-loading">Analyzing specifications...</div>
+          </div>
+        </section>
+
+        <!-- CHART SECTION -->
+        <section class="main-section" aria-labelledby="chartHeading">
+          <div class="section-header-block">
+            <div class="section-label">Performance Curve</div>
+            <h2 id="chartHeading" class="section-title-large">Hardware Cost vs. Screening Sensitivity</h2>
+            <p class="section-subtitle">
+              Trade-off curve across candidate sensor builds. The Pareto frontier traces specifications not beaten on
+              both cost and sensitivity.
+            </p>
+          </div>
+
+          <!-- Minimalist Chart Legend -->
+          <div class="chart-legend-row">
+            <div class="legend-entry"><span class="legend-mark mark-pareto-qual">★</span> Frontier (Meets Limits)</div>
+            <div class="legend-entry"><span class="legend-mark mark-pareto-fail">☆</span> Frontier (Outside Limits)
+            </div>
+            <div class="legend-entry"><span class="legend-mark mark-qual">●</span> Meets Limits</div>
+            <div class="legend-entry"><span class="legend-mark mark-fail">○</span> Outside Limits</div>
+            <div class="legend-entry"><span class="legend-line"></span> Min. Sensitivity Target</div>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="specScatterChart" role="img"
+              aria-label="Scatter chart of sensor cost in INR vs screening sensitivity percentage"></canvas>
+          </div>
+
+          <div class="chart-summary-line">
+            Frontier = not beaten on both cost and sensitivity. Filled = meets your limits.
+          </div>
+        </section>
+
+        <!-- COMPARISON TABLE SECTION -->
+        <section class="main-section" aria-labelledby="tableHeading">
+          <div class="table-header-row">
+            <div>
+              <div class="section-label">All Configurations</div>
+              <h2 id="tableHeading" class="section-title-large">Specification Matrix</h2>
+            </div>
+            <div class="table-tally" id="qualifyingCountBadge">
+              -- of -- qualify
+            </div>
+          </div>
+          <p class="section-subtitle">Click column headers to sort.</p>
+
+          <div class="table-scroll">
+            <table class="specs-table" id="specsTable">
+              <thead>
+                <tr>
+                  <th data-sort="channels" class="sortable col-num" title="Sort by channels">
+                    Channels <span class="sort-glyph">↕</span>
+                  </th>
+                  <th data-sort="sampling_rate_hz" class="sortable col-num" title="Sort by sampling rate">
+                    Rate (Hz) <span class="sort-glyph">↕</span>
+                  </th>
+                  <th data-sort="cost" class="sortable col-num" title="Sort by cost">
+                    Est. Cost (₹) <span class="sort-glyph">↕</span>
+                  </th>
+                  <th data-sort="sensitivity_pct" class="sortable col-num" title="Sort by sensitivity">
+                    Sensitivity <span class="sort-glyph">↕</span>
+                  </th>
+                  <th data-sort="extra_referrals_per_100_healthy" class="sortable col-num"
+                    title="Sort by extra referrals">
+                    Referrals / 100 <span class="sort-glyph">↕</span>
+                  </th>
+                  <th class="col-status">Status</th>
+                </tr>
+              </thead>
+              <tbody id="specsTableBody">
+                <!-- Dynamically populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- GUIDANCE SECTION ("How to Read This Tool") -->
+        <section class="main-section notes-section" aria-labelledby="guideHeading">
+          <div class="section-label">Reference Notes</div>
+          <h2 id="guideHeading" class="section-title-large">How to Read This Tool</h2>
+
+          <div class="guide-list">
+            <div class="guide-entry">
+              <h3 class="guide-title">1. Channels &amp; Sampling Rate (Hardware Complexity)</h3>
+              <p class="guide-body">
+                Channels are the scalp contact points, while sampling rate is how many times per second voltages are
+                measured. Higher counts capture finer brain signal detail, but increase headset manufacturing cost and
+                setup time.
+              </p>
+            </div>
+
+            <div class="guide-entry">
+              <h3 class="guide-title">2. Sensitivity (Patients Flagged for Referral)</h3>
+              <p class="guide-body">
+                Sensitivity is how many people who truly have cognitive impairment the tool flags, out of 100. A higher
+                number means fewer missed patients.
+              </p>
+            </div>
+
+            <div class="guide-entry">
+              <h3 class="guide-title">3. Extra Referrals (Second-Stage Clinic Burden)</h3>
+              <p class="guide-body">
+                Extra referrals are healthy individuals inadvertently flagged for hospital follow-up, out of 100 people
+                screened. Keeping this number low prevents secondary memory clinics from being overwhelmed by false
+                alarms.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- LIMITATIONS PANEL -->
+        <section class="main-section limitations-section" aria-labelledby="limitHeading">
+          <div class="limitations-header-row">
+            <div>
+              <div class="section-label">Clinical Context</div>
+              <h2 id="limitHeading" class="section-title-large">Limitations &amp; Clinical Boundaries</h2>
+            </div>
+            <span class="warning-tag">Limitations</span>
+          </div>
+
+          <div class="limitation-quote">
+            <p>
+              "Based on one clinical dataset recorded with wet electrodes in a hospital. Real low-cost sensors may be
+              noisier. Not clinically validated. Targets for sensitivity come from one clinician's rough view, not a
+              standard. EEG's added value over free tests (MMSE, Mini-Cog, GPCOG) is not proven here."
+            </p>
+          </div>
+
+          <ul class="limitations-bullets">
+            <li><strong>Pre-screening only:</strong> This tool is engineered solely to assist community screening
+              logistics and hardware budgeting. It does not provide definitive medical confirmation.</li>
+            <li><strong>Electrode contact impedance:</strong> Laboratory studies often utilize conductive gels and
+              supervised montage fitting. Field implementations using dry or semi-dry sensors may experience movement
+              artifacts.</li>
+            <li><strong>Comparative cost-benefit:</strong> Standard paper-and-pencil evaluations (e.g. Mini-Cog, MMSE)
+              carry near-zero hardware costs. Any EEG hardware investment must justify itself through higher
+              participation or reproducible referral yield.</li>
+          </ul>
+        </section>
+
+      </main>
+
+    </div> <!-- /workbench-layout -->
+
+  </div> <!-- /document-container -->
+
+  <!-- 10. MANDATORY FOOTER (Always visible, clean editorial layout) -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-primary">
+        Screening support only. Not a diagnosis.
+      </div>
+      <div class="footer-secondary">
+        NeuroSpec Prototype • Hardware specification analysis only
+      </div>
+    </div>
+  </footer>
+
+  <!-- SCRIPTS -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
