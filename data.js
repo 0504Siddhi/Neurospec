@@ -45,22 +45,24 @@ const DEFAULT_RESULTS = [
 let RESULTS = JSON.parse(JSON.stringify(DEFAULT_RESULTS));
 
 // 2. PLACEHOLDER HARDWARE COST MODEL (in Indian Rupees - INR ₹)
-// These are illustrative component-level engineering estimates.
-// In practice, health programs replace these with actual vendor quotations.
+// Component-level engineering estimates.
+// Cost per configuration = front-end chip + ESP32 board + electrodes (price per electrode x 1 electrode per channel) + other items.
 const DEFAULT_COSTS = {
-  // Base fixed cost per unit: micro-controller, power/battery management, chassis, bluetooth
-  baseHardwareINR: 4200,
-
-  // Incremental cost per channel: electrode connector, precision instrumentation amplifier, shielding
-  costPerChannelINR: 1100,
-
-  // Incremental ADC & sampling rate tier processor cost (higher Hz requires faster ADC and buffering)
-  samplingRateTierCostINR: {
-    62:  450,
-    125: 1100,
-    250: 2200,
-    500: 3800
-  }
+  // Front-end chip cost lookup table keyed by channel count (tag: listing price)
+  frontEndChipCostByChannels: {
+    2: 4297.39,   // 1 x ADS1299-4
+    4: 4297.39,   // 1 x ADS1299-4
+    8: 8971.19,   // 1 x ADS1299 8-channel
+    19: 22239.77  // 2 x 8-channel + 1 x ADS1299-4
+  },
+  // Fixed ESP32 board (tag: listing price, to confirm)
+  esp32BoardINR: 349.00,
+  // Electrode price per unit (1 electrode per channel, tag: listing price)
+  electrodeCostPerUnitINR: 33.44,
+  // Other items (tag: not yet priced)
+  batteryINR: 0,
+  leadsINR: 0,
+  refBiasElectrodesINR: 0
 };
 
 // Active editable copy of COSTS
@@ -68,15 +70,20 @@ let COSTS = JSON.parse(JSON.stringify(DEFAULT_COSTS));
 
 /**
  * Calculates estimated unit hardware cost in INR for a given spec.
- * Formula: Base Unit Cost + (Channels * Cost per Channel) + Sampling Rate Tier Cost
+ * Cost depends on channel count only (in steps). Sampling rate does not change cost.
+ * Formula: Front-end chip + ESP32 board + electrodes (price per electrode x 1 electrode per channel) + other items
  * 
  * @param {number} channels - Number of electrode channels (e.g., 2, 4, 8, 19)
- * @param {number} samplingRate - Sampling frequency in Hz (e.g., 62, 125, 250, 500)
+ * @param {number} [samplingRate] - Sampling frequency in Hz (does not affect cost)
  * @returns {number} Estimated cost in INR
  */
 function calculateSpecCost(channels, samplingRate) {
-  const base = Number(COSTS.baseHardwareINR) || 0;
-  const perChannel = Number(COSTS.costPerChannelINR) || 0;
-  const tierCost = Number(COSTS.samplingRateTierCostINR[samplingRate]) || 0;
-  return base + (channels * perChannel) + tierCost;
+  const chipCost = (COSTS.frontEndChipCostByChannels && Number(COSTS.frontEndChipCostByChannels[channels])) || 0;
+  const esp32 = Number(COSTS.esp32BoardINR) || 0;
+  const electrodes = (Number(COSTS.electrodeCostPerUnitINR) || 0) * channels;
+  const battery = Number(COSTS.batteryINR) || 0;
+  const leads = Number(COSTS.leadsINR) || 0;
+  const refBias = Number(COSTS.refBiasElectrodesINR) || 0;
+  return Math.round(chipCost + esp32 + electrodes + battery + leads + refBias);
 }
+

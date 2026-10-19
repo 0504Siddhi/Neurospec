@@ -85,33 +85,44 @@ function initControls() {
  * Initializes the editable cost input fields with current values from COSTS.
  */
 function initCostInputs() {
-  const inputBase = document.getElementById('inputBaseCost');
-  const inputPerChannel = document.getElementById('inputPerChannelCost');
-  const inputTier62 = document.getElementById('inputTier62');
-  const inputTier125 = document.getElementById('inputTier125');
-  const inputTier250 = document.getElementById('inputTier250');
-  const inputTier500 = document.getElementById('inputTier500');
+  const inputChip2 = document.getElementById('inputChip2');
+  const inputChip4 = document.getElementById('inputChip4');
+  const inputChip8 = document.getElementById('inputChip8');
+  const inputChip19 = document.getElementById('inputChip19');
+  const inputEsp32 = document.getElementById('inputCostEsp32');
+  const inputElectrode = document.getElementById('inputCostElectrode');
+  const inputBattery = document.getElementById('inputCostBattery');
+  const inputLeads = document.getElementById('inputCostLeads');
+  const inputRefBias = document.getElementById('inputCostRefBias');
 
-  inputBase.value = COSTS.baseHardwareINR;
-  inputPerChannel.value = COSTS.costPerChannelINR;
-  inputTier62.value = COSTS.samplingRateTierCostINR[62];
-  inputTier125.value = COSTS.samplingRateTierCostINR[125];
-  inputTier250.value = COSTS.samplingRateTierCostINR[250];
-  inputTier500.value = COSTS.samplingRateTierCostINR[500];
+  if (!inputChip2) return;
+
+  inputChip2.value = COSTS.frontEndChipCostByChannels[2];
+  inputChip4.value = COSTS.frontEndChipCostByChannels[4];
+  inputChip8.value = COSTS.frontEndChipCostByChannels[8];
+  inputChip19.value = COSTS.frontEndChipCostByChannels[19];
+  inputEsp32.value = COSTS.esp32BoardINR;
+  inputElectrode.value = COSTS.electrodeCostPerUnitINR;
+  inputBattery.value = COSTS.batteryINR;
+  inputLeads.value = COSTS.leadsINR;
+  inputRefBias.value = COSTS.refBiasElectrodesINR;
 
   // Listen to any input change to immediately recalculate device costs
   const handleCostEdit = () => {
-    COSTS.baseHardwareINR = Math.max(0, Number(inputBase.value) || 0);
-    COSTS.costPerChannelINR = Math.max(0, Number(inputPerChannel.value) || 0);
-    COSTS.samplingRateTierCostINR[62] = Math.max(0, Number(inputTier62.value) || 0);
-    COSTS.samplingRateTierCostINR[125] = Math.max(0, Number(inputTier125.value) || 0);
-    COSTS.samplingRateTierCostINR[250] = Math.max(0, Number(inputTier250.value) || 0);
-    COSTS.samplingRateTierCostINR[500] = Math.max(0, Number(inputTier500.value) || 0);
+    COSTS.frontEndChipCostByChannels[2] = Math.max(0, Number(inputChip2.value) || 0);
+    COSTS.frontEndChipCostByChannels[4] = Math.max(0, Number(inputChip4.value) || 0);
+    COSTS.frontEndChipCostByChannels[8] = Math.max(0, Number(inputChip8.value) || 0);
+    COSTS.frontEndChipCostByChannels[19] = Math.max(0, Number(inputChip19.value) || 0);
+    COSTS.esp32BoardINR = Math.max(0, Number(inputEsp32.value) || 0);
+    COSTS.electrodeCostPerUnitINR = Math.max(0, Number(inputElectrode.value) || 0);
+    COSTS.batteryINR = Math.max(0, Number(inputBattery.value) || 0);
+    COSTS.leadsINR = Math.max(0, Number(inputLeads.value) || 0);
+    COSTS.refBiasElectrodesINR = Math.max(0, Number(inputRefBias.value) || 0);
 
     updateDashboard();
   };
 
-  [inputBase, inputPerChannel, inputTier62, inputTier125, inputTier250, inputTier500].forEach(input => {
+  [inputChip2, inputChip4, inputChip8, inputChip19, inputEsp32, inputElectrode, inputBattery, inputLeads, inputRefBias].forEach(input => {
     input.addEventListener('input', handleCostEdit);
   });
 }
@@ -192,10 +203,13 @@ function findRecommendation(evaluatedSpecs) {
 
   if (qualifyingSpecs.length > 0) {
     // Sort qualifying by cost ascending (cheapest first)
-    // If costs are tied, choose the one with higher sensitivity
+    // If costs are tied, choose highest sensitivity; if still tied, lowest sampling rate
     qualifyingSpecs.sort((a, b) => {
       if (a.cost !== b.cost) return a.cost - b.cost;
-      return b.effective_sensitivity - a.effective_sensitivity;
+      if (b.effective_sensitivity !== a.effective_sensitivity) {
+        return b.effective_sensitivity - a.effective_sensitivity;
+      }
+      return a.sampling_rate_hz - b.sampling_rate_hz;
     });
 
     return {
@@ -279,7 +293,7 @@ function renderRecommendationCard(recResult) {
           <span class="rec-metric-sub">Per 100 healthy</span>
         </div>
         <div class="rec-metric-item">
-          <span class="rec-metric-label">Estimated Unit Cost</span>
+          <span class="rec-metric-label">Partial hardware cost estimate</span>
           <span class="rec-metric-val">₹${spec.cost.toLocaleString('en-IN')}</span>
           <span class="rec-metric-sub">Component estimate</span>
         </div>
@@ -317,7 +331,7 @@ function renderRecommendationCard(recResult) {
           <span class="rec-metric-sub">Ceiling was ${state.maxReferrals}</span>
         </div>
         <div class="rec-metric-item">
-          <span class="rec-metric-label">Estimated Unit Cost</span>
+          <span class="rec-metric-label">Partial hardware cost estimate</span>
           <span class="rec-metric-val">₹${closest.cost.toLocaleString('en-IN')}</span>
           <span class="rec-metric-sub">Component estimate</span>
         </div>
@@ -541,7 +555,7 @@ function renderScatterChart(evaluatedSpecs) {
         x: {
           title: {
             display: true,
-            text: 'Estimated Unit Hardware Cost (INR ₹)',
+            text: 'Partial hardware cost estimate (INR ₹)',
             font: { family: 'IBM Plex Sans, sans-serif', size: 12, weight: '500' },
             color: '#5E5A52'
           },

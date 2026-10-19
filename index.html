@@ -129,63 +129,101 @@
               Reset
             </button>
           </div>
-          <div class="cost-note">Estimates. Replace with vendor quotes.</div>
+          <div class="cost-note">
+            Partial estimate from supplier listing prices. Excludes PCB and assembly, battery, leads, reference and bias electrodes, voltage regulation, protection and isolation, enclosure and headgear. The 2-channel build uses a 4-channel chip. The 19-channel build uses 20 channels of chip capacity.
+          </div>
 
           <div class="cost-stack">
-            <div class="cost-field">
-              <label for="inputBaseCost" class="cost-label">
-                Base Electronics (₹)
-                <span class="cost-help">Chassis, MCU, power</span>
-              </label>
-              <div class="input-with-symbol">
-                <span class="symbol">₹</span>
-                <input type="number" id="inputBaseCost" min="500" max="25000" step="100" class="num-input">
-              </div>
+            <div class="tier-grid-label">
+              Front-End Chip by Channels (₹)
+              <span class="cost-help">Tag: listing price</span>
             </div>
-
-            <div class="cost-field">
-              <label for="inputPerChannelCost" class="cost-label">
-                Cost per Channel (₹)
-                <span class="cost-help">Electrode, lead, preamp</span>
-              </label>
-              <div class="input-with-symbol">
-                <span class="symbol">₹</span>
-                <input type="number" id="inputPerChannelCost" min="100" max="8000" step="50" class="num-input">
-              </div>
-            </div>
-
-            <div class="tier-grid-label">Sampling Rate Tiers (₹)</div>
             <div class="tier-inputs-grid">
               <div class="tier-field">
-                <label for="inputTier62">62 Hz</label>
+                <label for="inputChip2">2 ch (ADS1299-4)</label>
                 <div class="input-with-symbol">
                   <span class="symbol">₹</span>
-                  <input type="number" id="inputTier62" min="0" max="10000" step="50" class="num-input-sm">
+                  <input type="number" id="inputChip2" min="0" max="100000" step="0.01" class="num-input-sm">
                 </div>
               </div>
 
               <div class="tier-field">
-                <label for="inputTier125">125 Hz</label>
+                <label for="inputChip4">4 ch (ADS1299-4)</label>
                 <div class="input-with-symbol">
                   <span class="symbol">₹</span>
-                  <input type="number" id="inputTier125" min="0" max="10000" step="50" class="num-input-sm">
+                  <input type="number" id="inputChip4" min="0" max="100000" step="0.01" class="num-input-sm">
                 </div>
               </div>
 
               <div class="tier-field">
-                <label for="inputTier250">250 Hz</label>
+                <label for="inputChip8">8 ch (ADS1299 8-ch)</label>
                 <div class="input-with-symbol">
                   <span class="symbol">₹</span>
-                  <input type="number" id="inputTier250" min="0" max="10000" step="50" class="num-input-sm">
+                  <input type="number" id="inputChip8" min="0" max="100000" step="0.01" class="num-input-sm">
                 </div>
               </div>
 
               <div class="tier-field">
-                <label for="inputTier500">500 Hz</label>
+                <label for="inputChip19">19 ch (2x 8ch + 4ch)</label>
                 <div class="input-with-symbol">
                   <span class="symbol">₹</span>
-                  <input type="number" id="inputTier500" min="0" max="15000" step="50" class="num-input-sm">
+                  <input type="number" id="inputChip19" min="0" max="100000" step="0.01" class="num-input-sm">
                 </div>
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputCostEsp32" class="cost-label">
+                ESP32 Board (₹)
+                <span class="cost-help">Tag: listing price, to confirm</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputCostEsp32" min="0" max="50000" step="0.01" class="num-input">
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputCostElectrode" class="cost-label">
+                Electrode (each) (₹)
+                <span class="cost-help">1 electrode per channel &bull; Tag: listing price</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputCostElectrode" min="0" max="20000" step="0.01" class="num-input">
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputCostBattery" class="cost-label">
+                Battery (₹)
+                <span class="cost-help">Tag: not yet priced</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputCostBattery" min="0" max="50000" step="0.01" class="num-input">
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputCostLeads" class="cost-label">
+                Leads (₹)
+                <span class="cost-help">Tag: not yet priced</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputCostLeads" min="0" max="50000" step="0.01" class="num-input">
+              </div>
+            </div>
+
+            <div class="cost-field">
+              <label for="inputCostRefBias" class="cost-label">
+                Reference / Bias Electrodes (₹)
+                <span class="cost-help">Tag: not yet priced</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="symbol">₹</span>
+                <input type="number" id="inputCostRefBias" min="0" max="50000" step="0.01" class="num-input">
               </div>
             </div>
           </div>
