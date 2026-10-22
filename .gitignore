@@ -1,0 +1,22 @@
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local EEG dataset and participant-level data
+ds004504-data/
+eeg_features.csv
+processing_audit.csv
+*.set
+*.fdt
+*.edf
+*.bdf
+*.vhdr
+*.vmrk
+*.eeg
+
+# Ignore local output folders only at the repository root
+/results/
+/result/
