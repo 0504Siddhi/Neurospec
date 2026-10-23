@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NeuroSpec — Cognitive Healthcare Pre-Screening Hardware Evaluator</title>
+  <title>NeuroSpec — Dementia Pre-Screening Hardware Evaluator</title>
 
   <!-- Typography: Source Serif 4 (headings), IBM Plex Sans (body), IBM Plex Mono (table data) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,15 +23,20 @@
   <!-- 1. MANDATORY TOP BANNER (Always visible, solid dark ink strip) -->
   <aside id="topBanner" class="top-banner" role="alert" aria-live="polite">
     <div class="banner-inner">
-      <span class="banner-badge">NOTICE</span>
+      <span id="bannerBadge" class="banner-badge">REAL RUN</span>
       <span id="bannerText" class="banner-text">
-        ILLUSTRATIVE MOCKUP. Placeholder numbers, not real results.
+        Real run: ds004504, 88 people, cross-validated. Pre-screen support, not a diagnosis.
       </span>
       <!-- Appears only when a custom CSV is uploaded -->
       <div id="datasetNameContainer" class="dataset-name-container hidden">
         <label for="datasetNameInput" class="dataset-name-label">Dataset:</label>
         <input type="text" id="datasetNameInput" class="dataset-name-input" placeholder="e.g. Hospital Pilot Cohort A"
           value="Uploaded CSV Dataset">
+      </div>
+      <div class="banner-actions">
+        <button id="btnToggleDataSource" class="banner-btn" title="Toggle between real run and illustrative demo data">
+          Load demo data
+        </button>
       </div>
     </div>
   </aside>
@@ -45,9 +50,8 @@
       <div class="header-main-row">
         <div class="header-title-block">
           <h1 class="report-title">NeuroSpec</h1>
-          <div class="title-placeholder-note"></div>
           <p class="report-subtitle">
-            Sensor specification and trade-off evaluation for EEG-based cognitive pre-screening programs.
+            Sensor specification and trade-off evaluation for EEG-based dementia pre-screening programs.
           </p>
         </div>
         <div class="header-actions">
@@ -57,7 +61,7 @@
           <button id="btnPrint" class="btn btn-secondary btn-sm" title="Print this evaluation as a clean report or PDF">
             Print / PDF
           </button>
-          <button id="btnResetAll" class="btn btn-outline btn-sm" title="Restore default placeholder numbers">
+          <button id="btnResetAll" class="btn btn-outline btn-sm" title="Restore default real run values">
             Reset Defaults
           </button>
         </div>
@@ -65,11 +69,38 @@
       <div class="header-rule"></div>
     </header>
 
+    <!-- SHORT LIMITATIONS BOX NEAR TOP (Phase 4 requirement) -->
+    <aside class="top-limitations-box" role="note" aria-label="Key Limitations Summary">
+      <div class="top-limitations-inner">
+        <span class="top-limitations-badge">Key Limitations</span>
+        <p class="top-limitations-text">
+          Evaluated on one clinical dataset (ds004504, 88 participants) with hospital wet electrodes. Real dry or low-cost sensors will be noisier. Not clinically validated; EEG's added screening value over free cognitive tests (MMSE, Mini-Cog) is not yet proven.
+        </p>
+      </div>
+    </aside>
+
     <!-- WORKBENCH LAYOUT: SIDEBAR CONTROLS + MAIN ANALYSIS -->
     <div class="workbench-layout">
 
       <!-- LEFT SIDEBAR: PARAMETERS & ASSUMPTIONS -->
       <aside class="workbench-sidebar">
+
+        <!-- PRESET BUTTONS (Phase 3 requirement) -->
+        <section class="sidebar-section preset-section" aria-labelledby="presetHeading">
+          <div class="section-label">Quick Presets</div>
+          <h2 id="presetHeading" class="section-title">Program Targets</h2>
+          <div class="preset-buttons-group">
+            <button id="presetGeriatrician" class="btn btn-preset" title="Sets Min Sensitivity to 80% and Max Referrals to 30">
+              Geriatrician target (&ge;80%)
+            </button>
+            <button id="presetStrict" class="btn btn-preset" title="Sets Min Sensitivity to 90% and Max Referrals to 25">
+              Strict (&ge;90%)
+            </button>
+            <button id="presetBudget" class="btn btn-preset" title="Sets Min Sensitivity to 75% and Max Referrals to 50 for lowest cost">
+              Tight budget
+            </button>
+          </div>
+        </section>
 
         <!-- CONTROLS PANEL -->
         <section class="sidebar-section" aria-labelledby="controlsHeading">
@@ -79,14 +110,14 @@
           <div class="control-group">
             <div class="control-header">
               <label for="sliderSensitivity" class="control-name">Min. Sensitivity</label>
-              <span class="control-val" id="valSensitivity">85%</span>
+              <span class="control-val" id="valSensitivity">75%</span>
             </div>
-            <div class="control-desc">Patients caught: <span id="patientsCaughtDisplay">85</span> of 100</div>
-            <input type="range" id="sliderSensitivity" min="70" max="95" step="1" value="85" class="range-slider"
-              aria-valuemin="70" aria-valuemax="95" aria-valuenow="85">
+            <div class="control-desc" id="sensitivityMeaningDesc">75% = up to 25 of 100 dementia patients missed</div>
+            <input type="range" id="sliderSensitivity" min="70" max="95" step="1" value="75" class="range-slider"
+              aria-valuemin="70" aria-valuemax="95" aria-valuenow="75">
             <div class="slider-bounds">
               <span>70%</span>
-              <span>85%</span>
+              <span>80%</span>
               <span>95%</span>
             </div>
           </div>
@@ -94,9 +125,9 @@
           <div class="control-group">
             <div class="control-header">
               <label for="sliderReferrals" class="control-name">Max. Extra Referrals</label>
-              <span class="control-val" id="valReferrals">30 / 100</span>
+              <span class="control-val" id="valReferrals">30 / 100 healthy</span>
             </div>
-            <div class="control-desc">Max false referrals per 100 healthy people</div>
+            <div class="control-desc" id="referralsMeaningDesc">30 = up to 30 healthy seniors per 100 sent for clinic follow-up</div>
             <input type="range" id="sliderReferrals" min="10" max="50" step="1" value="30" class="range-slider"
               aria-valuemin="10" aria-valuemax="50" aria-valuenow="30">
             <div class="slider-bounds">
@@ -106,13 +137,14 @@
             </div>
           </div>
 
-          <div class="control-group toggle-group">
+          <div class="control-group toggle-group" id="noiseToggleContainer">
             <label class="checkbox-label" for="toggleNoise">
               <input type="checkbox" id="toggleNoise" class="checkbox-input">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">
                 <strong>Simulate noisier sensors</strong>
-                <span class="subtext">Lowers sensitivity by 4.0% to reflect field contact noise (illustrative).</span>
+                <span class="badge-tag">Demo only, not measured</span>
+                <span class="subtext">Lowers sensitivity by 4.0% to illustrate potential field contact noise.</span>
               </span>
             </label>
           </div>
@@ -130,13 +162,13 @@
             </button>
           </div>
           <div class="cost-note">
-            Partial estimate from supplier listing prices. Excludes PCB and assembly, battery, leads, reference and bias electrodes, voltage regulation, protection and isolation, enclosure and headgear. The 2-channel build uses a 4-channel chip. The 19-channel build uses 20 channels of chip capacity.
+            <strong>Headlines reflect chip + electrodes only.</strong> Sampling rate does not change hardware cost in this model. Excludes PCB, enclosure, battery, leads, and reference/bias electrodes. The 2-channel build uses a 4-channel chip. The 19-channel build uses 20 channels of chip capacity.
           </div>
 
           <div class="cost-stack">
             <div class="tier-grid-label">
               Front-End Chip by Channels (₹)
-              <span class="cost-help">Tag: listing price</span>
+              <span class="cost-help">Listing price</span>
             </div>
             <div class="tier-inputs-grid">
               <div class="tier-field">
@@ -175,7 +207,7 @@
             <div class="cost-field">
               <label for="inputCostEsp32" class="cost-label">
                 ESP32 Board (₹)
-                <span class="cost-help">Tag: listing price, to confirm</span>
+                <span class="cost-help">Listing price, to confirm</span>
               </label>
               <div class="input-with-symbol">
                 <span class="symbol">₹</span>
@@ -186,7 +218,7 @@
             <div class="cost-field">
               <label for="inputCostElectrode" class="cost-label">
                 Electrode (each) (₹)
-                <span class="cost-help">1 electrode per channel &bull; Tag: listing price</span>
+                <span class="cost-help">1 electrode per channel &bull; Listing price</span>
               </label>
               <div class="input-with-symbol">
                 <span class="symbol">₹</span>
@@ -197,7 +229,7 @@
             <div class="cost-field">
               <label for="inputCostBattery" class="cost-label">
                 Battery (₹)
-                <span class="cost-help">Tag: not yet priced</span>
+                <span class="cost-help">Not included in headline</span>
               </label>
               <div class="input-with-symbol">
                 <span class="symbol">₹</span>
@@ -208,7 +240,7 @@
             <div class="cost-field">
               <label for="inputCostLeads" class="cost-label">
                 Leads (₹)
-                <span class="cost-help">Tag: not yet priced</span>
+                <span class="cost-help">Not included in headline</span>
               </label>
               <div class="input-with-symbol">
                 <span class="symbol">₹</span>
@@ -219,7 +251,7 @@
             <div class="cost-field">
               <label for="inputCostRefBias" class="cost-label">
                 Reference / Bias Electrodes (₹)
-                <span class="cost-help">Tag: not yet priced</span>
+                <span class="cost-help">Not included in headline</span>
               </label>
               <div class="input-with-symbol">
                 <span class="symbol">₹</span>
@@ -229,28 +261,25 @@
           </div>
         </section>
 
-        <!-- CSV UPLOAD -->
+        <!-- CSV UPLOAD & DATA SOURCE -->
         <section class="sidebar-section" aria-labelledby="uploadHeading">
           <div class="section-label">Empirical Input</div>
-          <h2 id="uploadHeading" class="section-title">Load Real Results</h2>
+          <h2 id="uploadHeading" class="section-title">Upload Custom Results</h2>
           <p class="sidebar-desc">
-            Replace placeholder test values with data from clinical testing.
+            Upload custom cross-validation or hospital trial results CSV.
           </p>
           <div class="csv-upload-box">
             <input type="file" id="csvFileInput" accept=".csv,text/csv" class="file-input-hidden">
             <label for="csvFileInput" class="btn btn-secondary btn-full">
               Choose CSV File
             </label>
-            <button id="btnReloadPlaceholder" class="link-btn hidden">
-              Reload placeholder data
-            </button>
             <div id="uploadFeedback" class="upload-feedback" role="status"></div>
           </div>
         </section>
 
       </aside>
 
-      <!-- RIGHT MAIN CONTENT: RECOMMENDATION, CHART, TABLE, NOTES -->
+      <!-- RIGHT MAIN CONTENT: RECOMMENDATION, CAMP CALCULATOR, CHART, TABLE, NOTES -->
       <main class="workbench-main">
 
         <!-- RECOMMENDATION BLOCK -->
@@ -261,24 +290,93 @@
           </div>
         </section>
 
+        <!-- CAMP CALCULATOR SECTION (Phase 3 main feature) -->
+        <section class="main-section" aria-labelledby="calcHeading">
+          <div class="camp-calc-card">
+            <div class="calc-header-row">
+              <div>
+                <div class="section-label">Field Deployment Simulation</div>
+                <h2 id="calcHeading" class="section-title">Camp Calculator</h2>
+              </div>
+              <span class="calc-target-tag" id="calcTargetSpecTag">8 Channels @ 500 Hz</span>
+            </div>
+            <p class="calc-subtitle">
+              Simulate clinical workload, referral accuracy (precision), and initial capital hardware investment for a community screening camp.
+            </p>
+
+            <div class="calc-inputs-grid">
+              <div class="calc-input-group">
+                <label for="calcSeniorsScreened" class="calc-label">Seniors screened</label>
+                <input type="number" id="calcSeniorsScreened" class="num-input" value="1000" min="10" max="100000" step="50">
+                <span class="calc-input-hint">Target cohort size</span>
+              </div>
+
+              <div class="calc-input-group">
+                <label for="calcDementiaRate" class="calc-label">
+                  Assumed dementia rate (%)
+                  <span class="assumption-tag">assumption</span>
+                </label>
+                <div class="input-with-symbol">
+                  <input type="number" id="calcDementiaRate" class="num-input" value="7.4" min="0.1" max="50" step="0.1">
+                  <span class="symbol-suffix">%</span>
+                </div>
+                <span class="calc-input-hint">LASI study prevalence (~7.4%)</span>
+              </div>
+
+              <div class="calc-input-group">
+                <label for="calcHeadsets" class="calc-label">Number of headsets</label>
+                <input type="number" id="calcHeadsets" class="num-input" value="100" min="1" max="10000" step="5">
+                <span class="calc-input-hint">Hardware units deployed</span>
+              </div>
+            </div>
+
+            <!-- Plain English output sentence -->
+            <div class="calc-result-box" id="calcResultSentence">
+              <!-- Dynamically populated by app.js -->
+            </div>
+
+            <!-- Granular metrics breakdown -->
+            <div class="calc-metrics-row">
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Dementia Cases Caught</span>
+                <span class="calc-metric-val" id="calcCaughtVal">--</span>
+                <span class="calc-metric-sub" id="calcCaughtSub">--</span>
+              </div>
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Healthy People Referred</span>
+                <span class="calc-metric-val" id="calcReferredVal">--</span>
+                <span class="calc-metric-sub" id="calcReferredSub">False referrals</span>
+              </div>
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Referral Precision</span>
+                <span class="calc-metric-val" id="calcPrecisionVal">--</span>
+                <span class="calc-metric-sub" id="calcPrecisionSub">Truly have dementia</span>
+              </div>
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Total Hardware Cost</span>
+                <span class="calc-metric-val" id="calcTotalHardwareVal">--</span>
+                <span class="calc-metric-sub" id="calcTotalHardwareSub">100 units</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- CHART SECTION -->
         <section class="main-section" aria-labelledby="chartHeading">
           <div class="section-header-block">
             <div class="section-label">Performance Curve</div>
             <h2 id="chartHeading" class="section-title-large">Hardware Cost vs. Screening Sensitivity</h2>
             <p class="section-subtitle">
-              Trade-off curve across candidate sensor builds. The Pareto frontier traces specifications not beaten on
-              both cost and sensitivity.
+              Trade-off curve across candidate sensor builds. The <strong class="tooltip-trigger" title="Best-value options (Pareto frontier): specifications that cannot be beaten on both cost and sensitivity simultaneously.">best-value options</strong> connect configurations where no alternative achieves higher sensitivity at equal or lower cost.
             </p>
           </div>
 
-          <!-- Minimalist Chart Legend -->
+          <!-- Minimalist Chart Legend with Shapes & Colors -->
           <div class="chart-legend-row">
-            <div class="legend-entry"><span class="legend-mark mark-pareto-qual">★</span> Frontier (Meets Limits)</div>
-            <div class="legend-entry"><span class="legend-mark mark-pareto-fail">☆</span> Frontier (Outside Limits)
-            </div>
-            <div class="legend-entry"><span class="legend-mark mark-qual">●</span> Meets Limits</div>
-            <div class="legend-entry"><span class="legend-mark mark-fail">○</span> Outside Limits</div>
+            <div class="legend-entry"><span class="legend-mark mark-pareto-qual">★</span> Best-Value (Meets Limits)</div>
+            <div class="legend-entry"><span class="legend-mark mark-pareto-fail">▲</span> Best-Value (Outside Limits)</div>
+            <div class="legend-entry"><span class="legend-mark mark-qual">■</span> Meets Limits</div>
+            <div class="legend-entry"><span class="legend-mark mark-fail">●</span> Outside Limits</div>
             <div class="legend-entry"><span class="legend-line"></span> Min. Sensitivity Target</div>
           </div>
 
@@ -288,7 +386,8 @@
           </div>
 
           <div class="chart-summary-line">
-            Frontier = not beaten on both cost and sensitivity. Filled = meets your limits.
+            Step line connects best-value options. Channel counts labelled beside data points.
+            <span class="chart-noise-note">Note: 19-ch (78.0% ± 2.7%) vs 8-ch (77.8% ± 3.4%) sensitivity difference is within statistical noise.</span>
           </div>
         </section>
 
@@ -303,12 +402,15 @@
               -- of -- qualify
             </div>
           </div>
-          <p class="section-subtitle">Click column headers to sort.</p>
+          <p class="section-subtitle">
+            Grouped by channel count with sampling rates as expandable sub-rows. Click headers to sort or channel groups to toggle sub-rows.
+          </p>
 
           <div class="table-scroll">
             <table class="specs-table" id="specsTable">
               <thead>
                 <tr>
+                  <th class="col-expand" aria-label="Expand/Collapse"></th>
                   <th data-sort="channels" class="sortable col-num" title="Sort by channels">
                     Channels <span class="sort-glyph">↕</span>
                   </th>
@@ -316,22 +418,25 @@
                     Rate (Hz) <span class="sort-glyph">↕</span>
                   </th>
                   <th data-sort="cost" class="sortable col-num" title="Sort by cost">
-                    Est. Cost (₹) <span class="sort-glyph">↕</span>
+                    Est. Cost (₹)* <span class="sort-glyph">↕</span>
                   </th>
                   <th data-sort="sensitivity_pct" class="sortable col-num" title="Sort by sensitivity">
-                    Sensitivity <span class="sort-glyph">↕</span>
+                    Sensitivity (± SD) <span class="sort-glyph">↕</span>
                   </th>
                   <th data-sort="extra_referrals_per_100_healthy" class="sortable col-num"
                     title="Sort by extra referrals">
-                    Referrals / 100 <span class="sort-glyph">↕</span>
+                    Referrals / 100 healthy <span class="sort-glyph">↕</span>
                   </th>
-                  <th class="col-status">Status</th>
+                  <th class="col-status">Status &amp; Failure Reason</th>
                 </tr>
               </thead>
               <tbody id="specsTableBody">
                 <!-- Dynamically populated by app.js -->
               </tbody>
             </table>
+          </div>
+          <div class="table-footnote">
+            * Cost headline reflects front-end chip + electrodes only. Excludes PCB, enclosure, battery, leads, and reference/bias electrodes. Sampling rate does not change cost in this model.
           </div>
         </section>
 
@@ -344,32 +449,27 @@
             <div class="guide-entry">
               <h3 class="guide-title">1. Channels &amp; Sampling Rate (Hardware Complexity)</h3>
               <p class="guide-body">
-                Channels are the scalp contact points, while sampling rate is how many times per second voltages are
-                measured. Higher counts capture finer brain signal detail, but increase headset manufacturing cost and
-                setup time.
+                Channels are scalp electrode contacts; sampling rate is how many times per second voltages are measured. In this model, sampling rate does not affect hardware chip cost. Higher channel counts capture broader spatial patterns, but sharply increase front-end chip costs and headset assembly complexity.
               </p>
             </div>
 
             <div class="guide-entry">
-              <h3 class="guide-title">2. Sensitivity (Patients Flagged for Referral)</h3>
+              <h3 class="guide-title">2. Sensitivity (Dementia Cases Detected)</h3>
               <p class="guide-body">
-                Sensitivity is how many people who truly have cognitive impairment the tool flags, out of 100. A higher
-                number means fewer missed patients.
+                Sensitivity is the percentage of individuals with dementia that the pre-screening tool successfully flags for secondary clinical evaluation. A sensitivity of 75% means 25 out of 100 individuals with dementia are missed during screening.
               </p>
             </div>
 
             <div class="guide-entry">
               <h3 class="guide-title">3. Extra Referrals (Second-Stage Clinic Burden)</h3>
               <p class="guide-body">
-                Extra referrals are healthy individuals inadvertently flagged for hospital follow-up, out of 100 people
-                screened. Keeping this number low prevents secondary memory clinics from being overwhelmed by false
-                alarms.
+                Extra referrals are healthy seniors inadvertently referred to secondary clinics, expressed per 100 healthy individuals screened. Keeping this number low prevents secondary memory clinics and specialist doctors from being overwhelmed by false alarms.
               </p>
             </div>
           </div>
         </section>
 
-        <!-- LIMITATIONS PANEL -->
+        <!-- FULL LIMITATIONS PANEL AT BOTTOM -->
         <section class="main-section limitations-section" aria-labelledby="limitHeading">
           <div class="limitations-header-row">
             <div>
@@ -381,21 +481,14 @@
 
           <div class="limitation-quote">
             <p>
-              "Based on one clinical dataset recorded with wet electrodes in a hospital. Real low-cost sensors may be
-              noisier. Not clinically validated. Targets for sensitivity come from one clinician's rough view, not a
-              standard. EEG's added value over free tests (MMSE, Mini-Cog, GPCOG) is not proven here."
+              "Based on one clinical dataset (ds004504, 88 participants) recorded with wet electrodes in a hospital setting. Real low-cost dry sensors will be noisier. Not clinically validated. Targets for sensitivity reflect programmatic screening trade-offs, not clinical diagnostics. EEG's added value over zero-cost cognitive paper tests (MMSE, Mini-Cog, GPCOG) is not proven here."
             </p>
           </div>
 
           <ul class="limitations-bullets">
-            <li><strong>Pre-screening only:</strong> This tool is engineered solely to assist community screening
-              logistics and hardware budgeting. It does not provide definitive medical confirmation.</li>
-            <li><strong>Electrode contact impedance:</strong> Laboratory studies often utilize conductive gels and
-              supervised montage fitting. Field implementations using dry or semi-dry sensors may experience movement
-              artifacts.</li>
-            <li><strong>Comparative cost-benefit:</strong> Standard paper-and-pencil evaluations (e.g. Mini-Cog, MMSE)
-              carry near-zero hardware costs. Any EEG hardware investment must justify itself through higher
-              participation or reproducible referral yield.</li>
+            <li><strong>Pre-screening only:</strong> This tool is engineered solely to assist community screening logistics and hardware budgeting. It does not provide definitive medical confirmation or replace comprehensive clinical workup.</li>
+            <li><strong>Electrode contact impedance:</strong> Dataset ds004504 utilized conductive gel and supervised hospital placement. Field implementations using dry or semi-dry sensors will experience higher contact impedance and movement artifacts.</li>
+            <li><strong>Comparative cost-benefit:</strong> Standard paper-and-pencil evaluations carry near-zero hardware costs. Any EEG hardware investment must justify itself through higher community compliance, objective automation, or reproducible referral yield.</li>
           </ul>
         </section>
 
@@ -412,7 +505,7 @@
         Screening support only. Not a diagnosis.
       </div>
       <div class="footer-secondary">
-        NeuroSpec Prototype • Hardware specification analysis only
+        NeuroSpec Prototype • Hardware specification analysis for dementia pre-screening
       </div>
     </div>
   </footer>
