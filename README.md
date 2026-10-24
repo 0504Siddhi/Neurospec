@@ -1,34 +1,38 @@
 # NeuroSpec Dashboard
 
-A planning-tool prototype that helps a health program choose the cheapest EEG sensor specification (channels and sampling rate) that still meets a chosen pre-screening performance level.
+A hardware-aware software engine and planning tool designed to help cognitive healthcare programs evaluate sensor specifications and procurement trade-offs for EEG-based dementia pre-screening.
 
-**Status: Functional UI Prototype.** The application defaults to illustrative placeholder numbers to demonstrate the UI mechanics, but users can upload empirical test results via the built-in CSV ingestion tool.
+**Status: Functional UI Prototype.** The application defaults to illustrative "DEMO DATA" to demonstrate UI mechanics, but allows users to upload empirical test results via the "Load real run data" (CSV ingestion) tool.
 
-## What it does
+## Core Features
 
-- Set a minimum sensitivity (patients caught out of 100) and a maximum number of extra referrals per 100 healthy people.
-- Identify the cheapest hardware specification that meets both limits based on a component cost model.
-- Compare all specifications on a cost vs. sensitivity scatter chart (highlighting the Pareto frontier) and in a sortable matrix table.
-- Edit the hardware cost assumptions and see the recommendations update dynamically.
-- Load real testing results from a CSV requiring these exact columns: `channels`, `sampling_rate_hz`, `sensitivity_pct`, `extra_referrals_per_100_healthy`.
+*   **Interactive Constraints & Quick Presets:** 
+    *   Users can manually set limits for *Minimum Sensitivity* and *Max Extra Referrals* via sliders.
+    *   Includes quick-select presets for common scenarios: "Geriatrician target (≥80%)", "Strict (≥90%)", and "Tight budget".
+*   **Automated Hardware Recommendation:** Automatically identifies the lowest-cost hardware configuration that qualifies under the user's limits and calculates the exact cost advantage (savings per unit) compared to a standard 19-channel clinical montage.
+*   **Field Deployment Simulation (Camp Calculator):** Translates hardware specs into real-world logistics. Users input the target cohort size (Seniors screened), assumed dementia prevalence (e.g., 7.4% from LASI study), and number of deployed headsets. The tool calculates:
+    *   True dementia cases caught
+    *   Healthy people unnecessarily referred (clinic burden)
+    *   Referral precision (positive predictive value)
+    *   Total capital hardware cost for the deployment
+*   **Editable Unit Economics:** A dynamic cost-assumption engine where users can input listing prices for front-end chips, ESP32 boards, electrodes, batteries, and leads to instantly recalculate unit costs. *(Note: Sampling rate does not alter hardware cost in this model).*
+*   **Performance Visualization:** A scatter chart mapping Hardware Cost vs. Screening Sensitivity, featuring a step-line that visually connects the "Best-Value" options (the Pareto frontier) with inline channel labels.
+*   **Collapsible Specification Matrix:** A detailed data table grouped by channel count (expandable sub-rows for sampling rates) that reports cost, sensitivity (including ± Standard Deviation), referral load, and pass/fail status.
+*   **Environmental Simulation:** A toggle to "Simulate noisier sensors" which applies a flat penalty to sensitivity to illustrate potential field contact noise.
 
-## Run it
+## Data Ingestion
 
-No installation or server is needed. Download the files and open `index.html` in any modern web browser.
+Users can upload custom cross-validation or hospital trial results via CSV. The tool expects the data to map to channels, sampling rate, sensitivity, and extra referrals.
 
-## Files
+## Clinical Context & Limitations
 
-| File | Purpose |
-|---|---|
-| `index.html` | Page structure, layout, and textual guidance |
-| `style.css` | Clinical workbook styling, layout grid, and print media queries |
-| `app.js` | Recommendation logic, Pareto frontier calculation, Chart.js rendering, and CSV parsing |
-| `data.js` | Default placeholder results dataset and initial hardware cost assumptions |
+*As explicitly stated in the application UI:*
 
-*Note: The machine learning pipeline used to generate real empirical data is located separately in the `research/` directory. That script outputs a `dashboard_results.csv` which can be uploaded directly into this interface.*
+*   **Dataset Limitation:** Evaluated on one clinical dataset (ds004504, 88 participants) recorded with wet electrodes in a hospital setting. Real low-cost dry or semi-dry sensors will experience higher contact impedance and movement artifacts (noise).
+*   **Not a Diagnostic Tool:** Engineered solely to assist community screening logistics and hardware budgeting. It does not provide definitive medical confirmation or replace comprehensive clinical workups.
+*   **Unproven Baseline Advantage:** EEG's added screening value over zero-cost cognitive paper tests (MMSE, Mini-Cog, GPCOG) is not proven within this tool. Standard paper tests carry near-zero hardware costs; EEG investment must justify itself through higher community compliance, objective automation, or reproducible yield.
+*   **Cost Estimate Scope:** Headline costs reflect front-end chips and electrodes only. Estimates currently exclude PCB, enclosure, battery, leads, and reference/bias electrodes.
 
-## Limitations
+## How to Run
 
-- **Default Data:** Upon initial load, the dashboard relies on placeholder data. You must use the "Load Real Results" button to upload empirical data to view actual clinical trade-offs.
-- **Cost Model:** Cost figures are basic component estimates (front-end chip, ESP32 board, electrodes) based on supplier listing prices. They are not complete manufacturing vendor quotes.
-- **Clinical Boundaries:** This tool is intended for pre-screening logistics and hardware budgeting support only. It is not a diagnostic device and is not clinically validated.
+No installation or server is needed. Download the repository files and open `index.html` in any modern web browser.
