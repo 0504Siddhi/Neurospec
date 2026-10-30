@@ -1,139 +1,183 @@
-# NeuroSpec Dashboard
+# NeuroSpec
 
-A hardware-aware software engine and decision-planning tool designed to help cognitive healthcare programs evaluate sensor specifications and procurement trade-offs for EEG-based dementia pre-screening.
+A planning tool that helps a district health programme choose the cheapest EEG headset specification (number of channels and sampling rate) that still meets its own limits for first-stage dementia pre-screening.
 
-**Hackathon Theme:** Elderly Care & Healthy Ageing  
-**Status: Functional UI Prototype.** The application defaults to **REAL RUN RESULTS** from OpenNeuro dataset `ds004504` (88 participants, 10-repeat 5-fold cross-validation). Illustrative "DEMO DATA" is kept strictly behind an explicit toggle with a persistent red warning banner.
+**Team NeuroWell**, PVG's College of Engineering, Technology & Management (PVG COET), Pune.
 
----
+Built for **Hack for Social Cause (VBYLD 2027)**, theme: Elderly Care & Healthy Ageing.
 
-## Problem Statement & Beneficiary
-
-Older adults in community health camps frequently face under-detection of dementia due to clinical workforce shortages, specialized equipment scarcity, and the subjective variability or literacy dependencies of paper-and-pencil cognitive evaluations (e.g., MMSE, Mini-Cog). NeuroSpec is an engineering and logistics planning engine built for community healthcare directors, geriatric screening organizers, and public health procurement teams—using an illustrative district screening camp in Maharashtra as a concrete operational setting. By modeling the direct trade-off between EEG hardware capital costs (front-end instrumentation chips and electrodes) and diagnostic yield (true positive cases caught versus false alarms burdening secondary memory clinics), NeuroSpec enables programs to identify the most cost-effective sensor specification for community pre-screening without making unsupported diagnostic claims.
+> **Screening support only. Not a diagnosis.** NeuroSpec does not diagnose dementia and is not clinically validated.
 
 ---
 
-## Core Features
+## Problem and who it is for
 
-* **Empirical Default View:** Automatically opens on cross-validated test results directly derived from `research/results/dashboard_results.csv` (OpenNeuro `ds004504`).
-* **Hardware Recommendation Rule:** Automatically selects the *cheapest hardware configuration whose sensitivity is within 1 Standard Deviation (SD) of the best qualifying configuration*, balancing diagnostic yield with hardware budget. Under default targets ($\ge 75\%$ sensitivity, $\le 30$ extra referrals per 100 healthy), it selects **8 Channels @ 500 Hz** (₹9,588 unit cost, 77.8% sensitivity $\pm$ 3.4% SD, saving ₹13,636 per unit vs. 19 channels).
-* **Cost & Clinical Burden Metrics:**
-  * **Cost per True Case Found:** Hardware capital investment required per confirmed true positive case caught in the cohort (chip + electrodes only).
-  * **Referrals per True Case:** Total second-stage clinic referrals required to identify one true positive case (informing clinic triage burden).
-* **Field Deployment Simulation (Camp Calculator):**
-  * Title: *Camp Calculator: illustrative district scenario (Maharashtra)*
-  * Defaults: 5,000 seniors screened, 25 headsets deployed, 7.4% prevalence.
-  * Note: *Scenario inputs are illustrative, not measured data. All fields are editable.*
-  * Prevalence citation: National estimate, adults 60+ in India (Lee et al., 2023, Alzheimer's & Dementia; LASI-DAD). ASSUMPTION, editable. Other estimates differ (e.g. 8.44%, Jin et al., 2023).
-* **Executive Program Briefs (EN / HI / MR):** Program briefs in English, Hindi (हिन्दी), and Marathi (मराठी) generated with strict numerical verification against input data and zero diagnostic claims. Shipped defaults are explicitly labeled *Template-generated summary*.
-* **Editable Unit Economics:** Input listing prices for front-end chips (ADS1299-4, ADS1299 8-ch), ESP32 boards, electrodes, batteries, and leads to instantly recalculate unit BOM costs. Headline costs reflect chip + electrodes only (listing prices to be confirmed, date not recorded).
-* **Performance Visualization:** Interactive Chart.js scatter plot mapping Unit Hardware Cost vs. Screening Sensitivity with a Pareto step-line connecting best-value options.
+About 8.8 million Indians aged 60 or older are estimated to live with dementia, around 7.4% of that age group (Lee et al., 2023, *Alzheimer's & Dementia*, LASI-DAD). A district programme that wants to screen older adults at community camps with EEG headsets must decide how many channels to buy and at what sampling rate. Each choice changes the unit cost and how many healthy seniors are sent to clinics, but the buyer has no easy way to see that trade-off.
+
+NeuroSpec is built for programme managers and public health procurement teams. For each setup from 2 to 19 channels it shows the cost, how many people with dementia are flagged, and how many healthy seniors are referred unnecessarily. An illustrative district camp in Maharashtra is used as the example setting.
 
 ---
 
-## Quick Start (Web Dashboard)
+## What the tool does
 
-No Node.js runtime, build steps, or package compilation required. The dashboard runs in any modern browser using Python's built-in HTTP server:
+- **Set your limits:** a minimum sensitivity and a maximum number of extra referrals per 100 healthy seniors.
+- **Recommendation rule:** picks the cheapest setup whose sensitivity is within 1 standard deviation (SD) of the best qualifying setup. The rule is explained on screen.
+- **Evidence:** a cost-vs-sensitivity chart with a step line connecting best-value options, and a full specification table.
+- **Camp calculator:** for a chosen number of seniors, headsets and an assumed prevalence, it shows cases caught, healthy people referred, referral precision, total hardware cost, cost per true case found, and referrals per true case.
+- **Program Brief** in English, Hindi and Marathi (see below).
+- **Editable costs** and **CSV upload**, so a programme can use its own trial results.
+- **Real results by default.** Illustrative demo data is available only behind an explicit toggle, with a persistent red banner.
+
+---
+
+## Results at a glance
+
+Source: OpenNeuro `ds004504`, 88 participants, repeated stratified 5-fold cross-validation (10 repeats), 500 Hz. Costs are chip + electrodes only.
+
+| Channels | Unit cost (INR) | Sensitivity | Extra referrals per 100 healthy |
+|---|---|---|---|
+| 2  | 4,713  | 78.6% ± 2.0 | 35.2 ± 6.7 |
+| 4  | 4,780  | 78.5% ± 3.5 | 45.5 ± 3.2 |
+| 8  | 9,588  | 77.8% ± 3.4 | 29.7 ± 7.4 |
+| 19 | 23,224 | 78.0% ± 2.7 | 23.8 ± 5.3 |
+
+Results at 250 Hz and 125 Hz are in `research/results/dashboard_results.csv` and are very close to these.
+
+How to read this:
+
+- Sensitivity is about 78% in every setup, because the decision threshold is calibrated on training folds to target at least 80% sensitivity. What differs between setups is the number of unnecessary referrals.
+- With the default limits (at least 75% sensitivity, at most 30 extra referrals per 100 healthy), the tool recommends **8 channels at 500 Hz**: INR 9,588 per unit, which saves INR 13,636 per unit compared with 19 channels.
+- The 8-channel setup meets the referral limit by only 0.3, and its result overlaps with the 19-channel result within one SD.
+- The 2- and 4-channel setups miss the referral limit under the default settings.
+
+Camp calculator example (defaults: 5,000 seniors, 25 headsets, 7.4% prevalence, 8 channels): about 288 of roughly 370 people with dementia are flagged, 1,375 healthy people are referred, and about 17.3% of referrals have dementia. Hardware costs INR 2,39,700 (chip + electrodes only), or INR 832 per true case found. These are illustrative scenario inputs, not measured data.
+
+---
+
+## Quick start (dashboard)
+
+No build step and no Node.js needed. From the repository root:
 
 ```bash
-# Start a local HTTP server from the repository root
 python -m http.server 8080
 ```
 
-Open `http://localhost:8080/index.html` in your web browser.
+Then open `http://localhost:8080/index.html` in a browser. Opening `index.html` directly also works.
 
 ---
 
-## Python Environment Setup
+## Python setup
 
-Requires Python 3.10+ (tested on Python 3.12).
+Requires Python 3.10 or newer (tested on Python 3.12).
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/0504Siddhi/Neurospec.git
 cd Neurospec
 
-# 2. Create and activate a virtual environment
 python -m venv venv
-# On Windows:
+# Windows:
 .\venv\Scripts\activate
-# On Linux/macOS:
+# Linux/macOS:
 source venv/bin/activate
 
-# 3. Install dependencies
 pip install -r requirements.txt
 ```
 
----
+### Run the tests
 
-## Dataset Provenance & Download (OpenNeuro ds004504)
+```bash
+pytest tests/ -v
+```
 
-* **Dataset Provenance:** OpenNeuro dataset `ds004504` (License: CC0). Recorded at the 2nd Department of Neurology, AHEPA General Hospital of Thessaloniki, Aristotle University of Thessaloniki, Thessaloniki, Greece. 88 participants total: 36 Alzheimer's disease (`AD`), 23 Frontotemporal dementia (`FTD`), and 29 Healthy controls (`CN`). Clinical recordings utilized a Nihon Kohden EEG 2100 clinical device with 19 scalp electrodes (10–20 international system) and wet conductive paste (skin impedance < 5 kΩ).
-
-To download the raw dataset:
-1. Install the OpenNeuro CLI client:
-   ```bash
-   pip install openneuro-py
-   ```
-2. Download the dataset:
-   ```bash
-   openneuro-py download --dataset ds004504 --target-dir C:\neurospec_data\ds004504-data
-   ```
-   *(Or set a custom location via environment variable `NEUROSPEC_EEG_ROOT`)*.
-3. Dataset structure:
-   - `participants.tsv`: Subject IDs and diagnostic groups (`A` = Alzheimer's, `F` = Frontotemporal, `C` = Healthy Control).
-   - `sub-XXX/eeg/*.set`: 19-channel EEG EEGLAB recordings.
+The tests use synthetic data and the committed results files, so they do not need the EEG dataset.
 
 ---
 
-## EEG Analysis Pipeline & How Results Flow
+## Dataset (OpenNeuro ds004504)
 
-To re-run signal filtering, Welch PSD extraction, and repeated stratified 5-fold cross-validation:
+- **Source:** OpenNeuro `ds004504`, licence CC0. DOI: 10.18112/openneuro.ds004504.v1.0.7
+- **Recorded at:** 2nd Department of Neurology, AHEPA General University Hospital of Thessaloniki, Aristotle University of Thessaloniki, Greece.
+- **Participants:** 88 in total: 36 Alzheimer's disease (`A`), 23 frontotemporal dementia (`F`), 29 healthy controls (`C`).
+- **Recording:** Nihon Kohden EEG 2100, 19 scalp electrodes (10-20 system), resting state, eyes closed, wet conductive paste (skin impedance below 5 kOhm), 500 Hz.
+
+The raw dataset is not stored in this repository. To download it and point the pipeline at it:
+
+```bash
+pip install openneuro-py
+openneuro-py download --dataset ds004504 --target-dir ds004504-data
+
+# Tell the pipeline where it is (use the full path):
+# Linux/macOS:
+export NEUROSPEC_EEG_ROOT="$PWD/ds004504-data"
+# Windows PowerShell:
+$env:NEUROSPEC_EEG_ROOT="$PWD\ds004504-data"
+```
+
+The folder contains `participants.tsv` (subject IDs and groups) and `sub-XXX/eeg/*.set` (EEGLAB recordings).
+
+---
+
+## Re-running the analysis
 
 ```bash
 python research/eeg_analysis.py
 ```
 
-### Pipeline Flow:
-1. **Raw EEG Input:** Loads 19-channel `.set` files from `ds004504`.
-2. **Preprocessing:** Applies 1.0–45.0 Hz bandpass filtering and anti-aliased resampling to 500 Hz, 250 Hz, and 125 Hz.
-3. **Feature Extraction:** 10-second non-overlapping windows; Welch PSD across $\delta, \theta, \alpha, \beta, \gamma$ frequency bands computing absolute log power and relative power; aggregated via participant-level median.
-4. **Validation:** Repeated stratified 5-fold cross-validation (10 repeats) evaluated across 19, 8, 4, and 2-channel configurations. Decision threshold calibrated dynamically on out-of-fold training data to target $\ge 80\%$ sensitivity.
-5. **Output Generation:** Writes `research/results/dashboard_results.csv`, `research/results/channel_comparison.csv`, and `research/results/random_pairs.csv`.
-6. **Data Store Integration:** Metrics from `dashboard_results.csv` are embedded directly into `data.js` as `REAL_RESULTS`. The dashboard (`app.js`) consumes `REAL_RESULTS` to compute Pareto frontiers, recommendation rules, and camp projections.
+Pipeline:
+
+1. **Input:** 19-channel `.set` recordings from `ds004504`.
+2. **Preprocessing:** 1-45 Hz band-pass filter and anti-aliased resampling to 500, 250 and 125 Hz.
+3. **Features:** 10-second non-overlapping windows; Welch power spectral density in the delta, theta, alpha, beta and gamma bands (absolute log power and relative power); one feature vector per participant (median across windows).
+4. **Validation:** logistic regression with repeated stratified 5-fold cross-validation (10 repeats) on participant-level features, so no participant appears in both training and test folds. Setups with 19, 8, 4 and 2 channels are compared.
+5. **Output:** `research/results/dashboard_results.csv`, `channel_comparison.csv` and `random_pairs.csv`.
+6. **Dashboard:** the numbers in `dashboard_results.csv` are stored in `data.js` as `REAL_RESULTS`; `app.js` uses them for the recommendation, chart and camp calculator.
+
+More detail: [`research/README.md`](research/README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
-## Executive Program Brief Generator
+## Program Brief (English, Hindi, Marathi)
 
-Generates verified program briefs in English, Hindi, and Marathi:
+The dashboard includes a short brief for programme managers that restates the selected setup and the camp numbers in plain language. It only explains numbers computed by the tool. It does not compute new figures.
 
 ```bash
-# Template mode (deterministic, no API key required):
+# Template mode (default, no API key needed):
 python ai/generate_brief.py
 
-# Optional LLM-assisted mode (strictly validates numerical output against inputs):
-set BRIEF_API_KEY=your_api_key_here          # Windows CMD
-$env:BRIEF_API_KEY="your_api_key_here"       # PowerShell
-export BRIEF_API_KEY="your_api_key_here"     # Linux/macOS
+# Optional LLM mode (key read from an environment variable, never stored in the code):
+export BRIEF_API_KEY="your_key"          # Linux/macOS
+$env:BRIEF_API_KEY="your_key"            # Windows PowerShell
 python ai/generate_brief.py
 ```
 
-Output is verified and written to `ai/briefs.json`.
+Output is written to `ai/briefs.json`. In LLM mode, every number in the generated text is checked against the input values, and the text is rejected if any number does not match. The briefs that ship with this repository are **template-generated**, and the dashboard labels them "Template-generated summary". Hindi and Marathi text should be reviewed by a fluent reader before use.
 
 ---
 
-## Limitations & Honest Scope
+## Limitations and honest scope
 
-* **Pre-Screening Only:** Not a diagnostic device. Engineered solely to assist community screening logistics and hardware budgeting. Does not provide definitive medical confirmation or replace physician examination.
-* **Single Dataset & Population:** Not validated on Indian populations or low-cost dry sensors. Single dataset (`ds004504`), no external validation.
-* **Electrode Contact Impedance:** Dataset `ds004504` was collected in hospital conditions with wet gel electrodes and scalp preparation. Low-cost dry or semi-dry field electrodes will experience higher contact impedance and movement artifacts.
-* **Prevalence is an Assumption:** The default camp prevalence is 7.4% based on the national estimate for adults 60+ in India (Lee et al., 2023, Alzheimer's & Dementia; LASI-DAD). Other studies report different estimates (e.g. 8.44%, Jin et al., 2023). All scenario inputs are illustrative and fully editable.
-* **Cost Estimate Scope:** Headline unit costs reflect front-end instrumentation chips and electrodes only (listing prices to be confirmed, date not recorded). Excludes PCB fabrication, enclosures, batteries, leads, reference electrodes, and operational costs.
-* **Comparative Yield:** Standard paper-and-pencil cognitive evaluations (MMSE, Mini-Cog) carry near-zero hardware costs. EEG hardware investments must justify themselves through objective automation, operational reproducibility, and referral triage yield.
+- **Pre-screening only.** Not a diagnostic device and not clinically validated. It does not replace a physician's examination.
+- **One dataset, one population.** All results come from a single hospital dataset recorded in Greece. They are not validated on Indian populations, and there is no external validation.
+- **Wet electrodes.** The recordings used conductive paste and skin preparation in a hospital. Low-cost dry or semi-dry sensors will have higher contact impedance and more movement artefacts, so real-world performance is likely lower. The dashboard's "simulate noisier sensors" option applies a flat -4.0% sensitivity. It is an assumption, not a measurement.
+- **Prevalence is an assumption.** The default 7.4% is the national estimate for adults aged 60+ in India (Lee et al., 2023, *Alzheimer's & Dementia*; LASI-DAD). Other studies report different values, for example 8.44% (Jin et al., 2023, *Neuroepidemiology*). It is editable.
+- **Scenario inputs are illustrative.** The camp size (5,000 seniors) and headset count (25) are example values, not measured data.
+- **Cost scope.** Headline costs are chip + electrodes only, from listing prices to be confirmed (check date not recorded). The 2-channel build uses a 4-channel chip, and the 19-channel build uses 20 channels of chip capacity. Sampling rate does not change cost in this model. Costs exclude PCB, enclosure, battery, leads, reference electrodes and operating costs.
+- **Comparison with free tests.** Paper-and-pencil tests such as MMSE and Mini-Cog have near-zero hardware cost. The added value of EEG over these tests is not shown here.
 
 ---
 
-## License
+## Repository layout
 
-This project is licensed under the [MIT License](LICENSE).
+| Path | Purpose |
+|---|---|
+| `index.html`, `style.css`, `app.js`, `data.js` | Dashboard: interface, recommendation logic, charts, results data |
+| `research/` | EEG analysis pipeline and results CSVs |
+| `ai/` | Program Brief generator and generated briefs |
+| `docs/ARCHITECTURE.md` | Pipeline description and file map |
+| `tests/` | Smoke tests and a sample CSV for the upload feature |
+
+---
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
