@@ -919,7 +919,7 @@ body {
 
 .calc-metrics-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   gap: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-rule);
@@ -1580,3 +1580,233 @@ body {
     margin-top: 0.6rem !important;
   }
 }
+
+/* ==========================================================================
+   PERSISTENT RED DEMO DATA BANNER (Task 1)
+   ========================================================================== */
+.top-banner.banner-demo-active {
+  background-color: #991B1B !important; /* High-urgency red */
+  border-bottom: 2px solid #7F1D1D !important;
+  color: #FEF2F2 !important;
+}
+
+.top-banner.banner-demo-active .banner-badge {
+  background-color: #FEF2F2 !important;
+  color: #991B1B !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.top-banner.banner-demo-active .banner-btn {
+  background-color: #FEF2F2 !important;
+  color: #991B1B !important;
+  border-color: #FEF2F2 !important;
+  font-weight: 700 !important;
+}
+
+.top-banner.banner-demo-active .banner-btn:hover {
+  background-color: #FEE2E2 !important;
+}
+
+/* ==========================================================================
+   RECOMMENDATION RULE DISPLAY (Task 3)
+   ========================================================================== */
+.rec-rule-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: var(--color-teal-tint);
+  color: var(--color-teal);
+  border: 1px solid #BEE0DC;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+}
+
+.rec-rule-explanation {
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--color-ink-muted);
+  border-radius: 2px;
+  margin: 0.65rem 0;
+  line-height: 1.45;
+}
+
+.rec-rule-explanation strong {
+  color: var(--color-ink);
+}
+
+/* ==========================================================================
+   CAMP PRESETS & ASSUMPTION TAG (Task 4)
+   ========================================================================== */
+.calc-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.calc-presets-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-faint);
+}
+
+.preset-pill-btn {
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-dark);
+  color: var(--color-ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
+}
+
+.preset-pill-btn:hover {
+  background: var(--color-paper-sunken);
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+}
+
+.preset-pill-btn.active {
+  background: var(--color-teal-tint);
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+}
+
+/* ==========================================================================
+   PROGRAM BRIEF PANEL (Task 6)
+   ========================================================================== */
+.brief-card {
+  background-color: var(--color-paper-card);
+  border: 1px solid var(--color-rule);
+  border-top: 3px solid var(--color-blue);
+  padding: 1.4rem 1.6rem;
+  border-radius: 2px;
+}
+
+.brief-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 0.85rem;
+}
+
+.brief-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.brief-warning-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #B45309;
+  background-color: #FEF3C7;
+  border: 1px solid #FCD34D;
+  padding: 0.25rem 0.6rem;
+  border-radius: 2px;
+}
+
+.lang-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--color-rule-dark);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  background: var(--color-paper);
+  border: none;
+  border-right: 1px solid var(--color-rule);
+  color: var(--color-ink-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.15s ease;
+}
+
+.lang-btn:last-child {
+  border-right: none;
+}
+
+.lang-btn:hover {
+  background: var(--color-paper-sunken);
+  color: var(--color-ink);
+}
+
+.lang-btn.active {
+  background: var(--color-teal);
+  color: #FFFFFF;
+}
+
+.brief-content-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.brief-headline {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.brief-paragraph {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.brief-callout {
+  background: var(--color-paper-sunken);
+  border-left: 3px solid var(--color-teal);
+  padding: 0.85rem 1.15rem;
+  border-radius: 2px;
+}
+
+.brief-subheading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-teal);
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+}
+
+.brief-disclaimer-box {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: #92400E;
+  line-height: 1.45;
+  border-radius: 2px;
+}
+

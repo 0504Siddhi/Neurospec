@@ -32,7 +32,11 @@ const state = {
   // Camp Calculator parameters (Phase 3)
   campSeniors: 1000,
   campDementiaRate: 7.4,
-  campHeadsets: 100
+  campHeadsets: 100,
+
+  // Program Brief parameters (Task 6)
+  briefLang: 'en',
+  briefsData: null
 };
 
 // ============================================================================
@@ -56,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Attach quick action listeners and presets
   initActionButtons();
+
+  // Initialize Program Brief panel
+  initProgramBrief();
 
   // Update banner text for real data default
   updateBanner();
@@ -195,26 +202,31 @@ function initCostInputs() {
  * Updates top banner based on active dataset (real run vs demo vs uploaded CSV).
  */
 function updateBanner() {
+  const banner = document.getElementById('topBanner');
   const badge = document.getElementById('bannerBadge');
   const text = document.getElementById('bannerText');
   const btnToggle = document.getElementById('btnToggleDataSource');
   const datasetNameContainer = document.getElementById('datasetNameContainer');
 
   if (state.customFileName) {
+    if (banner) banner.classList.remove('banner-demo-active');
     if (badge) badge.textContent = 'UPLOADED CSV';
     if (text) text.textContent = `Loaded from file: ${state.customFileName}`;
     if (datasetNameContainer) datasetNameContainer.classList.remove('hidden');
     if (btnToggle) btnToggle.textContent = 'Restore real run data';
   } else if (state.isDemoData) {
-    if (badge) badge.textContent = 'DEMO DATA';
-    if (text) text.textContent = 'DEMO DATA, not measured';
+    // Persistent red banner when DEMO DATA is active (Task 1)
+    if (banner) banner.classList.add('banner-demo-active');
+    if (badge) badge.textContent = 'DEMO DATA (SYNTHETIC)';
+    if (text) text.textContent = 'CAUTION: DEMO DATA ACTIVE — Illustrative placeholder numbers, not clinical run results.';
     if (datasetNameContainer) datasetNameContainer.classList.add('hidden');
-    if (btnToggle) btnToggle.textContent = 'Load real run data';
+    if (btnToggle) btnToggle.textContent = 'Exit demo data (return to real run)';
   } else {
+    if (banner) banner.classList.remove('banner-demo-active');
     if (badge) badge.textContent = 'REAL RUN';
     if (text) text.textContent = 'Real run: ds004504, 88 people, cross-validated. Pre-screen support, not a diagnosis.';
     if (datasetNameContainer) datasetNameContainer.classList.add('hidden');
-    if (btnToggle) btnToggle.textContent = 'Load demo data';
+    if (btnToggle) btnToggle.textContent = 'Demo data';
   }
 }
 
@@ -296,36 +308,63 @@ function evaluateSpecifications() {
 
 /**
  * Finds the optimal hardware recommendation.
- * Prioritizes lowest cost among specs meeting both constraints.
- * Tie-break rule (Phase 2 #8):
+ * Recommendation Rule (Task 3):
+ * "Cheapest config whose sensitivity is within 1 SD of the best qualifying config".
+ * Tie-break rule:
  * 1. Lower cost
  * 2. Higher sensitivity
  * 3. Fewer referrals
- * 4. Lower sampling rate
+ * 4. Higher sampling rate
  */
 function findRecommendation(evaluatedSpecs) {
   const qualifyingSpecs = evaluatedSpecs.filter(s => s.meetsLimits);
 
   if (qualifyingSpecs.length > 0) {
-    qualifyingSpecs.sort((a, b) => {
-      // 1. Lower cost
-      if (a.cost !== b.cost) return a.cost - b.cost;
-      // 2. Higher sensitivity
+    // 1. Identify the best qualifying config (highest sensitivity; tie-breaker: fewer referrals, lower cost)
+    const sortedBySensitivity = [...qualifyingSpecs].sort((a, b) => {
       if (b.effective_sensitivity !== a.effective_sensitivity) {
         return b.effective_sensitivity - a.effective_sensitivity;
       }
-      // 3. Fewer referrals
       if (a.extra_referrals !== b.extra_referrals) {
         return a.extra_referrals - b.extra_referrals;
       }
-      // 4. Deterministic sampling rate: higher sampling rate preferred when tied
+      return a.cost - b.cost;
+    });
+
+    const bestQualifying = sortedBySensitivity[0];
+    const bestSD = (typeof bestQualifying.sensitivity_std === 'number' && !isNaN(bestQualifying.sensitivity_std))
+      ? bestQualifying.sensitivity_std
+      : 2.5;
+
+    const thresholdSensitivity = Number((bestQualifying.effective_sensitivity - bestSD).toFixed(1));
+
+    // 2. Filter to configs whose sensitivity is within 1 SD of the best qualifying config
+    const candidateSpecs = qualifyingSpecs.filter(s => s.effective_sensitivity >= thresholdSensitivity);
+
+    // 3. Pick the CHEAPEST configuration among those candidates
+    candidateSpecs.sort((a, b) => {
+      // Primary: Lower cost
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      // Tie-break 1: Higher sensitivity
+      if (b.effective_sensitivity !== a.effective_sensitivity) {
+        return b.effective_sensitivity - a.effective_sensitivity;
+      }
+      // Tie-break 2: Fewer referrals
+      if (a.extra_referrals !== b.extra_referrals) {
+        return a.extra_referrals - b.extra_referrals;
+      }
+      // Tie-break 3: Higher sampling rate preferred
       return b.sampling_rate_hz - a.sampling_rate_hz;
     });
 
     return {
       success: true,
-      spec: qualifyingSpecs[0],
-      totalQualifying: qualifyingSpecs.length
+      spec: candidateSpecs[0],
+      bestQualifying: bestQualifying,
+      bestSD: bestSD,
+      thresholdSensitivity: thresholdSensitivity,
+      totalQualifying: qualifyingSpecs.length,
+      candidateCount: candidateSpecs.length
     };
   }
 
@@ -347,7 +386,11 @@ function findRecommendation(evaluatedSpecs) {
   return {
     success: false,
     spec: closestSpec,
-    totalQualifying: 0
+    bestQualifying: null,
+    bestSD: 0,
+    thresholdSensitivity: 0,
+    totalQualifying: 0,
+    candidateCount: 0
   };
 }
 
@@ -369,11 +412,15 @@ function updateDashboard() {
 }
 
 /**
- * Renders Hero Recommendation Block with Cost Gaps and Exclusions Note.
+ * Renders Hero Recommendation Block with Cost Gaps, Rule Display, and New Metrics.
  */
 function renderRecommendationCard(recResult, allSpecs) {
   const card = document.getElementById('recommendationCard');
   if (!card) return;
+
+  const N = state.campSeniors;
+  const p = state.campDementiaRate / 100;
+  const H = state.campHeadsets;
 
   if (recResult.success) {
     const spec = recResult.spec;
@@ -387,7 +434,6 @@ function renderRecommendationCard(recResult, allSpecs) {
     const cheaperSpecs = allSpecs.filter(s => s.cost < spec.cost);
     let cheaperNote = '';
     if (cheaperSpecs.length > 0) {
-      // Find highest sensitivity among cheaper specs
       const nextCheaper = cheaperSpecs.sort((a, b) => b.cost - a.cost)[0];
       const costDiff = spec.cost - nextCheaper.cost;
       cheaperNote = `The cheaper alternative (${nextCheaper.channels} channels at ₹${nextCheaper.cost.toLocaleString('en-IN')}, saving ₹${costDiff.toLocaleString('en-IN')}) fails your limits: ${nextCheaper.failureReason.toLowerCase()}.`;
@@ -395,15 +441,33 @@ function renderRecommendationCard(recResult, allSpecs) {
       cheaperNote = 'This is the lowest-cost configuration available in the evaluation matrix.';
     }
 
+    // Cohort calculations for new metrics (Task 2)
+    const totalDementia = N * p;
+    const totalHealthy = N * (1 - p);
+    const casesCaught = Math.round(totalDementia * (spec.effective_sensitivity / 100));
+    const healthyReferred = Math.round(totalHealthy * (spec.extra_referrals / 100));
+    const totalReferrals = casesCaught + healthyReferred;
+    const totalHardware = H * spec.cost;
+    const costPerTrueCase = casesCaught > 0 ? Math.round(totalHardware / casesCaught) : 0;
+    const referralsPerTrueCase = casesCaught > 0 ? (totalReferrals / casesCaught).toFixed(1) : '0.0';
+
     card.innerHTML = `
       <div class="rec-meta-row">
         <span class="rec-kicker">Recommended Specification</span>
-        <span class="rec-tag">Qualifies on limits</span>
+        <span class="rec-rule-tag">Rule: Cheapest within 1 SD of best qualifying</span>
       </div>
 
       <h2 class="rec-headline">
         ${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz &mdash; ₹${spec.cost.toLocaleString('en-IN')} (chip + electrodes only)
       </h2>
+
+      <!-- Rule Display in UI (Task 3) -->
+      <div class="rec-rule-explanation">
+        <strong>Recommendation Rule Applied:</strong> Selects the cheapest configuration whose sensitivity is within 1 standard deviation of the best qualifying configuration.<br>
+        • Best qualifying config: <strong>${recResult.bestQualifying.channels} Channels @ ${recResult.bestQualifying.sampling_rate_hz} Hz</strong> (${recResult.bestQualifying.effective_sensitivity}% sensitivity ± ${recResult.bestSD}% SD).<br>
+        • 1-SD margin threshold: <strong>&ge;${recResult.thresholdSensitivity}%</strong> sensitivity.<br>
+        • Selected: <strong>${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz</strong> (achieves ${spec.effective_sensitivity}%, saving ₹${savingsVs19.toLocaleString('en-IN')} per unit vs 19ch).
+      </div>
 
       <div class="rec-gap-highlight">
         <strong>Cost Advantage:</strong> Saves <strong>₹${savingsVs19.toLocaleString('en-IN')} per unit</strong> compared to a 19-channel clinical montage. ${cheaperNote}
@@ -419,6 +483,7 @@ function renderRecommendationCard(recResult, allSpecs) {
         * Cost excludes PCB, enclosure, battery, leads, and reference/bias electrodes.
       </div>
 
+      <!-- Granular metrics (Task 2: added Cost/True Case and Referrals/True Case) -->
       <div class="rec-metrics-row">
         <div class="rec-metric-item">
           <span class="rec-metric-label">Screening Sensitivity</span>
@@ -434,6 +499,16 @@ function renderRecommendationCard(recResult, allSpecs) {
           <span class="rec-metric-label">Unit Cost (Headline)</span>
           <span class="rec-metric-val">₹${spec.cost.toLocaleString('en-IN')}</span>
           <span class="rec-metric-sub">chip + electrodes</span>
+        </div>
+        <div class="rec-metric-item">
+          <span class="rec-metric-label">Cost / True Case</span>
+          <span class="rec-metric-val">₹${costPerTrueCase.toLocaleString('en-IN')}</span>
+          <span class="rec-metric-sub">in ${N} cohort</span>
+        </div>
+        <div class="rec-metric-item">
+          <span class="rec-metric-label">Referrals / Case</span>
+          <span class="rec-metric-val">${referralsPerTrueCase}</span>
+          <span class="rec-metric-sub">total clinic load</span>
         </div>
         <div class="rec-metric-item">
           <span class="rec-metric-label">Best-Value Option</span>
@@ -458,6 +533,16 @@ function renderRecommendationCard(recResult, allSpecs) {
     } else {
       missExplanation = `Too many referrals by +${refExcess}`;
     }
+
+    // Cohort calculations for closest option
+    const totalDementia = N * p;
+    const totalHealthy = N * (1 - p);
+    const casesCaught = Math.round(totalDementia * (closest.effective_sensitivity / 100));
+    const healthyReferred = Math.round(totalHealthy * (closest.extra_referrals / 100));
+    const totalReferrals = casesCaught + healthyReferred;
+    const totalHardware = H * closest.cost;
+    const costPerTrueCase = casesCaught > 0 ? Math.round(totalHardware / casesCaught) : 0;
+    const referralsPerTrueCase = casesCaught > 0 ? (totalReferrals / casesCaught).toFixed(1) : '0.0';
 
     card.innerHTML = `
       <div class="rec-meta-row">
@@ -492,6 +577,16 @@ function renderRecommendationCard(recResult, allSpecs) {
           <span class="rec-metric-sub">chip + electrodes</span>
         </div>
         <div class="rec-metric-item">
+          <span class="rec-metric-label">Cost / True Case</span>
+          <span class="rec-metric-val">₹${costPerTrueCase.toLocaleString('en-IN')}</span>
+          <span class="rec-metric-sub">in ${N} cohort</span>
+        </div>
+        <div class="rec-metric-item">
+          <span class="rec-metric-label">Referrals / Case</span>
+          <span class="rec-metric-val">${referralsPerTrueCase}</span>
+          <span class="rec-metric-sub">total clinic load</span>
+        </div>
+        <div class="rec-metric-item">
           <span class="rec-metric-label">Shortfall</span>
           <span class="rec-metric-val">${missExplanation.replace('Misses sensitivity by ', '-')}</span>
           <span class="rec-metric-sub">Gap to requirement</span>
@@ -504,7 +599,8 @@ function renderRecommendationCard(recResult, allSpecs) {
 /**
  * SECTION: Camp Calculator (Phase 3 Main Feature)
  * Inputs: Seniors screened (N), Assumed dementia rate (p), Headsets (H)
- * Outputs: Cases caught, healthy referred, precision (% dementia), total hardware cost.
+ * Outputs: Cases caught, healthy referred, precision (% dementia), total hardware cost,
+ *          Cost per true case found, Referrals per true case (Task 2).
  */
 function renderCampCalculator(selectedSpec) {
   if (!selectedSpec) return;
@@ -541,13 +637,19 @@ function renderCampCalculator(selectedSpec) {
   // Total hardware investment
   const totalHardware = H * selectedSpec.cost;
 
-  // Update plain sentence output (Phase 3 #13)
+  // Task 2 Metrics: Cost per true case found and referrals per true case
+  const costPerTrueCase = patientsCaught > 0 ? Math.round(totalHardware / patientsCaught) : 0;
+  const referralsPerTrueCase = patientsCaught > 0 ? (totalReferrals / patientsCaught).toFixed(1) : '0.0';
+
+  // Update plain sentence output
   const sentenceBox = document.getElementById('calcResultSentence');
   if (sentenceBox) {
     sentenceBox.innerHTML = `
       <strong>Screening Projection:</strong> Catches about <strong>${patientsCaught}</strong>, 
       sends about <strong>${healthyReferred}</strong> healthy people to clinics; 
       <strong>${ratioText}</strong> referrals has dementia (${precisionPct}% precision). 
+      Hardware cost per true case found: <strong>₹${costPerTrueCase.toLocaleString('en-IN')}</strong>, 
+      with <strong>${referralsPerTrueCase}</strong> clinic referrals per true case caught. 
       Total hardware: <strong>₹${totalHardware.toLocaleString('en-IN')}</strong> (chip + electrodes only).
     `;
   }
@@ -561,6 +663,10 @@ function renderCampCalculator(selectedSpec) {
   const precSub = document.getElementById('calcPrecisionSub');
   const hwVal = document.getElementById('calcTotalHardwareVal');
   const hwSub = document.getElementById('calcTotalHardwareSub');
+  const costCaseVal = document.getElementById('calcCostPerTrueCaseVal');
+  const costCaseSub = document.getElementById('calcCostPerTrueCaseSub');
+  const refCaseVal = document.getElementById('calcReferralsPerTrueCaseVal');
+  const refCaseSub = document.getElementById('calcReferralsPerTrueCaseSub');
 
   if (caughtVal) caughtVal.textContent = patientsCaught.toLocaleString();
   if (caughtSub) caughtSub.textContent = `of ~${Math.round(totalDementia)} true cases (${(sensitivity * 100).toFixed(1)}%)`;
@@ -573,6 +679,12 @@ function renderCampCalculator(selectedSpec) {
 
   if (hwVal) hwVal.textContent = `₹${totalHardware.toLocaleString('en-IN')}`;
   if (hwSub) hwSub.textContent = `${H} headsets @ ₹${selectedSpec.cost.toLocaleString('en-IN')}`;
+
+  if (costCaseVal) costCaseVal.textContent = `₹${costPerTrueCase.toLocaleString('en-IN')}`;
+  if (costCaseSub) costCaseSub.textContent = `hardware / true case`;
+
+  if (refCaseVal) refCaseVal.textContent = `${referralsPerTrueCase}`;
+  if (refCaseSub) refCaseSub.textContent = `total referrals / case`;
 }
 
 // ============================================================================
@@ -1265,6 +1377,44 @@ function initActionButtons() {
     });
   }
 
+  // Maharashtra District Camp preset (Task 4)
+  const presetMahaCamp = document.getElementById('presetMahaCamp');
+  const presetStandardCamp = document.getElementById('presetStandardCamp');
+
+  if (presetMahaCamp) {
+    presetMahaCamp.addEventListener('click', () => {
+      state.campSeniors = 5000;
+      state.campDementiaRate = 7.4;
+      state.campHeadsets = 25;
+      const inputSeniors = document.getElementById('calcSeniorsScreened');
+      const inputRate = document.getElementById('calcDementiaRate');
+      const inputHeadsets = document.getElementById('calcHeadsets');
+      if (inputSeniors) inputSeniors.value = 5000;
+      if (inputRate) inputRate.value = 7.4;
+      if (inputHeadsets) inputHeadsets.value = 25;
+      presetMahaCamp.classList.add('active');
+      if (presetStandardCamp) presetStandardCamp.classList.remove('active');
+      updateDashboard();
+    });
+  }
+
+  if (presetStandardCamp) {
+    presetStandardCamp.addEventListener('click', () => {
+      state.campSeniors = 1000;
+      state.campDementiaRate = 7.4;
+      state.campHeadsets = 100;
+      const inputSeniors = document.getElementById('calcSeniorsScreened');
+      const inputRate = document.getElementById('calcDementiaRate');
+      const inputHeadsets = document.getElementById('calcHeadsets');
+      if (inputSeniors) inputSeniors.value = 1000;
+      if (inputRate) inputRate.value = 7.4;
+      if (inputHeadsets) inputHeadsets.value = 100;
+      presetStandardCamp.classList.add('active');
+      if (presetMahaCamp) presetMahaCamp.classList.remove('active');
+      updateDashboard();
+    });
+  }
+
   // 5. Print / Save PDF
   const btnPrint = document.getElementById('btnPrint');
   if (btnPrint) {
@@ -1311,3 +1461,83 @@ function downloadSampleCsv() {
   link.click();
   document.body.removeChild(link);
 }
+
+/**
+ * Loads ai/briefs.json and initializes the Program Brief panel (Task 6).
+ */
+function initProgramBrief() {
+  const btnEN = document.getElementById('btnLangEN');
+  const btnHI = document.getElementById('btnLangHI');
+  const btnMR = document.getElementById('btnLangMR');
+
+  if (btnEN) btnEN.addEventListener('click', () => setBriefLanguage('en'));
+  if (btnHI) btnHI.addEventListener('click', () => setBriefLanguage('hi'));
+  if (btnMR) btnMR.addEventListener('click', () => setBriefLanguage('mr'));
+
+  // Attempt fetch, fallback to default embedded brief if running offline/file://
+  fetch('ai/briefs.json')
+    .then(res => {
+      if (!res.ok) throw new Error('Network response not ok');
+      return res.json();
+    })
+    .then(data => {
+      state.briefsData = data.briefs;
+      renderProgramBrief(state.briefLang);
+    })
+    .catch(err => {
+      console.warn('Could not load ai/briefs.json via fetch, using bundled brief:', err);
+      state.briefsData = DEFAULT_BRIEFS;
+      renderProgramBrief(state.briefLang);
+    });
+}
+
+function setBriefLanguage(lang) {
+  state.briefLang = lang;
+  ['btnLangEN', 'btnLangHI', 'btnLangMR'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      if (btn.getAttribute('data-lang') === lang) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+  renderProgramBrief(lang);
+}
+
+function renderProgramBrief(lang) {
+  if (!state.briefsData || !state.briefsData[lang]) return;
+  const brief = state.briefsData[lang];
+
+  const titleEl = document.getElementById('briefTitle');
+  const summaryEl = document.getElementById('briefSummary');
+  const logisticsEl = document.getElementById('briefLogistics');
+  const boundariesEl = document.getElementById('briefBoundaries');
+
+  if (titleEl) titleEl.textContent = brief.title;
+  if (summaryEl) summaryEl.textContent = brief.summary;
+  if (logisticsEl) logisticsEl.textContent = brief.logistics;
+  if (boundariesEl) boundariesEl.textContent = brief.clinical_boundaries;
+}
+
+const DEFAULT_BRIEFS = {
+  en: {
+    title: "Executive Brief: 8-Channel EEG Pre-Screening Hardware",
+    summary: "Evaluation for community health screening: The recommended 8-channel configuration operating at 500 Hz costs ₹9,588 per unit (chip and electrodes only). In empirical testing, it achieved 77.8% sensitivity (±3.4% SD) with 29.7 extra referrals per 100 healthy individuals (±7.4 SD).",
+    logistics: "In a simulated field camp of 1,000 seniors (7.4% assumed prevalence, 100 headsets), this hardware catches approximately 58 true cases while referring 275 healthy seniors to secondary clinics. Capital hardware cost per true case identified is ₹16,531, with 5.7 total clinic referrals per true case caught.",
+    clinical_boundaries: "Screening logistics and hardware budgeting support only. Not a diagnostic device. Does not provide clinical confirmation or replace physician evaluation. Recorded using wet electrodes in hospital settings; field dry sensors will exhibit higher contact noise."
+  },
+  hi: {
+    title: "कार्यकारी सारांश: 8-चैनल ईईजी पूर्व-स्क्रीनिंग हार्डवेयर",
+    summary: "सामुदायिक स्वास्थ्य पूर्व-स्क्रीनिंग मूल्यांकन: अनुशंसित 8-चैनल कॉन्फ़िगरेशन (500 हर्ट्ज़) की प्रति यूनिट हार्डवेयर लागत ₹9,588 है (केवल चिप और इलेक्ट्रोड)। परीक्षण में इसने 77.8% संवेदनशीलता (±3.4% SD) तथा 29.7 अतिरिक्त रेफरल प्रति 100 स्वस्थ व्यक्ति (±7.4 SD) प्राप्त किए।",
+    logistics: "1,000 वरिष्ठ नागरिकों के शिविर में (7.4% प्रसार अनुमान, 100 हेडसेट), यह प्रणाली लगभग 58 वास्तविक मामलों की पहचान करती है और 275 स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹16,531 है, तथा प्रति वास्तविक मामले पर कुल 5.7 क्लिनिकल रेफरल होते हैं।",
+    clinical_boundaries: "केवल पूर्व-स्क्रीनिंग लॉजिस्टिक्स और उपकरण बजट योजना सहायता हेतु। यह कोई चिकित्सीय निदान (डायग्नोसिस) नहीं है। यह डॉक्टर के व्यापक परीक्षण का विकल्प नहीं है। अस्पताल में वेट इलेक्ट्रोड द्वारा मूल्यांकित; फील्ड में ड्राई सेंसर में शोर अधिक होगा।"
+  },
+  mr: {
+    title: "कार्यकारी अहवाल: 8-चॅनेल ईईजी पूर्व-स्क्रीनिंग हार्डवेअर",
+    summary: "समुदाय आरोग्य पूर्व-स्क्रीनिंग मूल्यमापन: शिफारस केलेले 8-चॅनेल कॉन्फिगरेशन (500 हर्ट्झ) प्रति युनिट ₹9,588 खर्चात उपलब्ध आहे (फक्त चिप आणि इलेक्ट्रोड्स). चाचणीत याने 77.8% संवेदनशीलता (±3.4% SD) आणि 29.7 अतिरिक्त रेफरल्स प्रति 100 निरोगी व्यक्ती (±7.4 SD) नोंदवले.",
+    logistics: "1,000 ज्येष्ठ नागरिकांच्या शिबिरात (7.4% गृहीत प्रमाण, 100 हेडसेट), ही यंत्रणा अंदाजे 58 प्रत्यक्ष व्यक्ती शोधते आणि 275 निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹16,531 असून, प्रति प्रत्यक्ष प्रकरणासाठी एकूण 5.7 क्लिनिकल रेफरल्स होतात.",
+    clinical_boundaries: "फक्त पूर्व-स्क्रीनिंग नियोजन आणि उपकरणांच्या बजेटसाठी सहाय्यक. हे कोणतेही वैद्यकीय निदान (diagnosis) नाही. हे तज्ज्ञ डॉक्टरांच्या तपासणीचा पर्याय नाही. ओल्या इलेक्ट्रोड्सवर आधारित; ग्रामीण भागात ड्राय सेन्सर्स अधिक आवाजी (noise) असू शकतात."
+  }
+};

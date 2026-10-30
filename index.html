@@ -304,6 +304,17 @@
               Simulate clinical workload, referral accuracy (precision), and initial capital hardware investment for a community screening camp.
             </p>
 
+            <!-- Camp Presets (Task 4) -->
+            <div class="calc-presets-row">
+              <span class="calc-presets-label">Camp Presets:</span>
+              <button type="button" id="presetMahaCamp" class="preset-pill-btn" title="Maharashtra District Camp scenario: 5,000 seniors, 7.4% prevalence (LASI estimate), 25 mobile headsets">
+                Maharashtra district camp
+              </button>
+              <button type="button" id="presetStandardCamp" class="preset-pill-btn active" title="Default 1,000 seniors cohort">
+                Standard camp (1,000)
+              </button>
+            </div>
+
             <div class="calc-inputs-grid">
               <div class="calc-input-group">
                 <label for="calcSeniorsScreened" class="calc-label">Seniors screened</label>
@@ -314,13 +325,13 @@
               <div class="calc-input-group">
                 <label for="calcDementiaRate" class="calc-label">
                   Assumed dementia rate (%)
-                  <span class="assumption-tag">assumption</span>
+                  <span class="assumption-tag">ASSUMPTION</span>
                 </label>
                 <div class="input-with-symbol">
                   <input type="number" id="calcDementiaRate" class="num-input" value="7.4" min="0.1" max="50" step="0.1">
                   <span class="symbol-suffix">%</span>
                 </div>
-                <span class="calc-input-hint">LASI study prevalence (~7.4%)</span>
+                <span class="calc-input-hint"><strong>Source note:</strong> Longitudinal Ageing Study in India (LASI) Wave 1, state-level dementia prevalence assumption (~7.4%) for Maharashtra/India older adults. Fully editable for local adjustments.</span>
               </div>
 
               <div class="calc-input-group">
@@ -335,7 +346,7 @@
               <!-- Dynamically populated by app.js -->
             </div>
 
-            <!-- Granular metrics breakdown -->
+            <!-- Granular metrics breakdown (Task 2: added Cost/case and Referrals/case) -->
             <div class="calc-metrics-row">
               <div class="calc-metric-item">
                 <span class="calc-metric-label">Dementia Cases Caught</span>
@@ -356,6 +367,49 @@
                 <span class="calc-metric-label">Total Hardware Cost</span>
                 <span class="calc-metric-val" id="calcTotalHardwareVal">--</span>
                 <span class="calc-metric-sub" id="calcTotalHardwareSub">100 units</span>
+              </div>
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Cost per True Case</span>
+                <span class="calc-metric-val" id="calcCostPerTrueCaseVal">--</span>
+                <span class="calc-metric-sub" id="calcCostPerTrueCaseSub">hardware / case</span>
+              </div>
+              <div class="calc-metric-item">
+                <span class="calc-metric-label">Referrals / True Case</span>
+                <span class="calc-metric-val" id="calcReferralsPerTrueCaseVal">--</span>
+                <span class="calc-metric-sub" id="calcReferralsPerTrueCaseSub">total referrals / case</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PROGRAM BRIEF SECTION (Task 6: AI-generated with Verification) -->
+        <section class="main-section" aria-labelledby="briefHeading">
+          <div class="brief-card">
+            <div class="brief-header-row">
+              <div class="brief-title-group">
+                <div class="section-label">Executive Briefing</div>
+                <h2 id="briefHeading" class="section-title">Program Brief</h2>
+              </div>
+              <div class="brief-badge-group">
+                <span class="brief-warning-badge">AI-generated, verify before use.</span>
+                <div class="lang-toggle-group" role="group" aria-label="Brief Language Selector">
+                  <button type="button" id="btnLangEN" class="lang-btn active" data-lang="en">EN</button>
+                  <button type="button" id="btnLangHI" class="lang-btn" data-lang="hi">HI</button>
+                  <button type="button" id="btnLangMR" class="lang-btn" data-lang="mr">MR</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="briefContentArea" class="brief-content-area">
+              <h3 id="briefTitle" class="brief-headline">Loading program brief...</h3>
+              <p id="briefSummary" class="brief-paragraph"></p>
+              <div class="brief-callout">
+                <h4 class="brief-subheading">Logistics &amp; Field Impact</h4>
+                <p id="briefLogistics" class="brief-paragraph"></p>
+              </div>
+              <div class="brief-disclaimer-box">
+                <strong>Clinical Limitations:</strong>
+                <span id="briefBoundaries"></span>
               </div>
             </div>
           </div>

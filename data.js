@@ -62,8 +62,8 @@ const DEMO_RESULTS = [
   { channels: 2,  sampling_rate_hz: 62,  sensitivity_pct: 66.5, extra_referrals_per_100_healthy: 47.0 }
 ];
 
-// Backwards compatibility alias
-const DEFAULT_RESULTS = DEMO_RESULTS;
+// Backwards compatibility alias: Defaults to REAL_RESULTS
+const DEFAULT_RESULTS = REAL_RESULTS;
 
 // Active copy of RESULTS: Defaults to REAL_RESULTS as required
 let RESULTS = JSON.parse(JSON.stringify(REAL_RESULTS));
