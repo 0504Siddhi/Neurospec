@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ai/generate_brief.py - AI Executive Brief Generator for NeuroSpec
+ai/generate_brief.py - Executive Program Brief Generator for NeuroSpec
 
 Generates localized executive program briefs (English, Hindi, Marathi)
 evaluating pre-screening hardware trade-offs for health program directors.
@@ -8,9 +8,9 @@ evaluating pre-screening hardware trade-offs for health program directors.
 Security & Integrity Constraints:
 - BRIEF_API_KEY is read strictly from environment variables (never hardcoded).
 - Prompt specifies: use ONLY the supplied numbers, no medical claims, no diagnosis language.
-- Output numbers are strictly validated against input numbers. Unauthorized numbers trigger a retry;
-  if retry fails or if no API key is provided, validated template-based briefs are generated.
-- Writes output to ai/briefs.json.
+- Output numbers are strictly validated against input numbers, normalizing Devanagari numerals
+  and thousands separators before verification.
+- Writes output to ai/briefs.json with language-level source markers ('llm' or 'template').
 """
 
 import os
@@ -23,20 +23,21 @@ import urllib.request
 import urllib.error
 
 OUTPUT_FILE = Path(__file__).parent / "briefs.json"
+DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate localized program briefs from EEG hardware metrics.")
     parser.add_argument("--channels", type=int, default=8, help="Number of channels")
     parser.add_argument("--rate", type=int, default=500, help="Sampling rate in Hz")
-    parser.add_argument("--cost", type=int, default=9588, help="Unit hardware cost in INR")
+    parser.add_argument("--cost", type=int, default=9588, help="Unit hardware cost in INR (chip + electrodes only)")
     parser.add_argument("--sensitivity", type=float, default=77.8, help="Screening sensitivity percentage")
     parser.add_argument("--sensitivity_std", type=float, default=3.4, help="Sensitivity standard deviation")
     parser.add_argument("--referrals", type=float, default=29.7, help="Extra referrals per 100 healthy")
     parser.add_argument("--referrals_std", type=float, default=7.4, help="Extra referrals standard deviation")
-    parser.add_argument("--seniors", type=int, default=1000, help="Seniors screened in camp")
+    parser.add_argument("--seniors", type=int, default=5000, help="Seniors screened in camp")
     parser.add_argument("--prevalence", type=float, default=7.4, help="Assumed dementia prevalence percentage")
-    parser.add_argument("--headsets", type=int, default=100, help="Deployed headset units")
+    parser.add_argument("--headsets", type=int, default=25, help="Deployed headset units")
     return parser.parse_args()
 
 
@@ -90,13 +91,24 @@ def get_allowed_number_tokens(metrics):
 
 
 def validate_text_numbers(text, allowed_tokens):
-    # Extract all standalone integers or decimals
-    found_numbers = re.findall(r"\b\d+(?:\.\d+)?\b", text)
+    """
+    Normalizes Devanagari numerals and comma thousands separators before
+    extracting and verifying every number against allowed input tokens.
+    Returns a list of unauthorized numbers detected in text.
+    """
+    # 1. Normalize Devanagari numerals (०-९ -> 0-9)
+    normalized = text.translate(DEVANAGARI_DIGITS)
+    # 2. Remove thousands comma separators embedded between digits (e.g. 5,000 -> 5000, 2,39,700 -> 239700)
+    normalized = re.sub(r"(?<=\d),(?=\d)", "", normalized)
+    
+    # 3. Extract all standalone numbers (integers or decimals)
+    found_numbers = re.findall(r"\b\d+(?:\.\d+)?\b", normalized)
     unauthorized = []
     for num in found_numbers:
-        # Check direct or float-equal match
+        # Direct string token match
         if num in allowed_tokens:
             continue
+        # Numerical float equivalence match
         try:
             val = float(num)
             if any(abs(val - float(token)) < 1e-4 for token in allowed_tokens if re.match(r"^\d+(?:\.\d+)?$", token)):
@@ -110,6 +122,7 @@ def validate_text_numbers(text, allowed_tokens):
 def build_template_briefs(m):
     return {
         "en": {
+            "source": "template",
             "title": f"Executive Brief: {m['channels']}-Channel EEG Pre-Screening Hardware",
             "summary": (
                 f"Evaluation for community health screening: The recommended {m['channels']}-channel configuration "
@@ -121,7 +134,7 @@ def build_template_briefs(m):
                 f"In a simulated field camp of {m['camp_seniors']} seniors ({m['camp_prevalence_pct']}% assumed prevalence, "
                 f"{m['camp_headsets']} headsets), this hardware catches approximately {m['cases_caught']} true cases "
                 f"while referring {m['healthy_referred']} healthy seniors to secondary clinics. "
-                f"Capital hardware cost per true case identified is ₹{m['cost_per_case_inr']}, "
+                f"Capital hardware cost per true case identified is ₹{m['cost_per_case_inr']} (chip + electrodes only), "
                 f"with {m['referrals_per_true_case']} total clinic referrals per true case caught."
             ),
             "clinical_boundaries": (
@@ -131,6 +144,7 @@ def build_template_briefs(m):
             )
         },
         "hi": {
+            "source": "template",
             "title": f"कार्यकारी सारांश: {m['channels']}-चैनल ईईजी पूर्व-स्क्रीनिंग हार्डवेयर",
             "summary": (
                 f"सामुदायिक स्वास्थ्य पूर्व-स्क्रीनिंग मूल्यांकन: अनुशंसित {m['channels']}-चैनल कॉन्फ़िगरेशन "
@@ -142,7 +156,7 @@ def build_template_briefs(m):
                 f"{m['camp_seniors']} वरिष्ठ नागरिकों के शिविर में ({m['camp_prevalence_pct']}% प्रसार अनुमान, "
                 f"{m['camp_headsets']} हेडसेट), यह प्रणाली लगभग {m['cases_caught']} वास्तविक मामलों की पहचान करती है "
                 f"और {m['healthy_referred']} स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। "
-                f"पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹{m['cost_per_case_inr']} है, "
+                f"पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹{m['cost_per_case_inr']} है (केवल चिप और इलेक्ट्रोड), "
                 f"तथा प्रति वास्तविक मामले पर कुल {m['referrals_per_true_case']} क्लिनिकल रेफरल होते हैं।"
             ),
             "clinical_boundaries": (
@@ -151,6 +165,7 @@ def build_template_briefs(m):
             )
         },
         "mr": {
+            "source": "template",
             "title": f"कार्यकारी अहवाल: {m['channels']}-चॅनेल ईईजी पूर्व-स्क्रीनिंग हार्डवेअर",
             "summary": (
                 f"समुदाय आरोग्य पूर्व-स्क्रीनिंग मूल्यमापन: शिफारस केलेले {m['channels']}-चॅनेल कॉन्फिगरेशन "
@@ -162,7 +177,7 @@ def build_template_briefs(m):
                 f"{m['camp_seniors']} ज्येष्ठ नागरिकांच्या शिबिरात ({m['camp_prevalence_pct']}% गृहीत प्रमाण, "
                 f"{m['camp_headsets']} हेडसेट), ही यंत्रणा अंदाजे {m['cases_caught']} प्रत्यक्ष व्यक्ती शोधते "
                 f"आणि {m['healthy_referred']} निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. "
-                f"प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹{m['cost_per_case_inr']} असून, "
+                f"प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹{m['cost_per_case_inr']} असून (फक्त चिप आणि इलेक्ट्रोड्स), "
                 f"प्रति प्रत्यक्ष प्रकरणासाठी एकूण {m['referrals_per_true_case']} क्लिनिकल रेफरल्स होतात."
             ),
             "clinical_boundaries": (
@@ -174,7 +189,6 @@ def build_template_briefs(m):
 
 
 def call_llm(prompt, api_key):
-    # Support OpenAI or Gemini endpoint depending on key format
     if api_key.startswith("AIza"):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         payload = {
@@ -209,11 +223,11 @@ def call_llm(prompt, api_key):
 
 def generate_with_llm(metrics, allowed_tokens, api_key):
     base_prompt = (
-        "You are an AI assistant generating executive program briefs for cognitive healthcare directors.\n"
+        "You are an assistant generating executive program briefs for cognitive healthcare program directors.\n"
         "STRICT MANDATE:\n"
         "1. You must use ONLY the supplied numbers below. Do NOT invent, round, extrapolate, or introduce ANY unauthorized number.\n"
-        "2. NO medical claims. NO diagnosis language. This is purely a pre-screening triage logistics and procurement tool.\n"
-        "3. Return strict JSON with top-level keys 'en', 'hi', 'mr'. Each must have 'title', 'summary', 'logistics', 'clinical_boundaries'.\n\n"
+        "2. NO medical claims. NO diagnosis language. This is purely a pre-screening triage logistics and procurement budgeting tool.\n"
+        "3. Return strict JSON with top-level keys 'en', 'hi', 'mr'. Each must contain 'title', 'summary', 'logistics', 'clinical_boundaries'.\n\n"
         f"SUPPLIED METRICS:\n{json.dumps(metrics, indent=2)}\n"
     )
 
@@ -227,6 +241,9 @@ def generate_with_llm(metrics, allowed_tokens, api_key):
             unauthorized = validate_text_numbers(all_text, allowed_tokens)
             if not unauthorized:
                 print("LLM brief successfully generated and validated against supplied numbers.")
+                for lang in ("en", "hi", "mr"):
+                    if lang in briefs and isinstance(briefs[lang], dict):
+                        briefs[lang]["source"] = "llm"
                 return briefs, "llm"
             else:
                 print(f"Validation failed (attempt {attempt + 1}): unauthorized numbers detected: {unauthorized}")
@@ -235,7 +252,11 @@ def generate_with_llm(metrics, allowed_tokens, api_key):
             print(f"LLM call failed (attempt {attempt + 1}): {e}")
 
     print("Falling back to verified template briefs.")
-    return build_template_briefs(metrics), "template_fallback"
+    tb = build_template_briefs(metrics)
+    for lang in ("en", "hi", "mr"):
+        if lang in tb and isinstance(tb[lang], dict):
+            tb[lang]["source"] = "template"
+    return tb, "template_fallback"
 
 
 def main():

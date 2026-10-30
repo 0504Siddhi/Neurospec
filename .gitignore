@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 venv/
 env/
+.env
+.env.*
 
 # Local EEG dataset and participant-level data
 ds004504-data/
@@ -20,3 +22,7 @@ processing_audit.csv
 # Ignore local output folders only at the repository root
 /results/
 /result/
+
+# Documentation visual artifacts / screenshots
+docs/screenshots/
+

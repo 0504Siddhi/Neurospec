@@ -9,33 +9,36 @@
     "sensitivity_std": 3.4,
     "extra_referrals_per_100": 29.7,
     "extra_referrals_std": 7.4,
-    "camp_seniors": 1000,
+    "camp_seniors": 5000,
     "camp_prevalence_pct": 7.4,
-    "camp_headsets": 100,
-    "cases_caught": 58,
-    "healthy_referred": 275,
-    "total_referrals": 333,
-    "total_hardware_cost_inr": 958800,
-    "cost_per_case_inr": 16531,
-    "referrals_per_true_case": 5.7
+    "camp_headsets": 25,
+    "cases_caught": 288,
+    "healthy_referred": 1375,
+    "total_referrals": 1663,
+    "total_hardware_cost_inr": 239700,
+    "cost_per_case_inr": 832,
+    "referrals_per_true_case": 5.8
   },
   "briefs": {
     "en": {
+      "source": "template",
       "title": "Executive Brief: 8-Channel EEG Pre-Screening Hardware",
       "summary": "Evaluation for community health screening: The recommended 8-channel configuration operating at 500 Hz costs ₹9588 per unit (chip and electrodes only). In empirical testing, it achieved 77.8% sensitivity (±3.4% SD) with 29.7 extra referrals per 100 healthy individuals (±7.4 SD).",
-      "logistics": "In a simulated field camp of 1000 seniors (7.4% assumed prevalence, 100 headsets), this hardware catches approximately 58 true cases while referring 275 healthy seniors to secondary clinics. Capital hardware cost per true case identified is ₹16531, with 5.7 total clinic referrals per true case caught.",
+      "logistics": "In a simulated field camp of 5000 seniors (7.4% assumed prevalence, 25 headsets), this hardware catches approximately 288 true cases while referring 1375 healthy seniors to secondary clinics. Capital hardware cost per true case identified is ₹832 (chip + electrodes only), with 5.8 total clinic referrals per true case caught.",
       "clinical_boundaries": "Screening logistics and hardware budgeting support only. Not a diagnostic device. Does not provide clinical confirmation or replace physician evaluation. Recorded using wet electrodes in hospital settings; field dry sensors will exhibit higher contact noise."
     },
     "hi": {
+      "source": "template",
       "title": "कार्यकारी सारांश: 8-चैनल ईईजी पूर्व-स्क्रीनिंग हार्डवेयर",
       "summary": "सामुदायिक स्वास्थ्य पूर्व-स्क्रीनिंग मूल्यांकन: अनुशंसित 8-चैनल कॉन्फ़िगरेशन (500 हर्ट्ज़) की प्रति यूनिट हार्डवेयर लागत ₹9588 है (केवल चिप और इलेक्ट्रोड)। परीक्षण में इसने 77.8% संवेदनशीलता (±3.4% SD) तथा 29.7 अतिरिक्त रेफरल प्रति 100 स्वस्थ व्यक्ति (±7.4 SD) प्राप्त किए।",
-      "logistics": "1000 वरिष्ठ नागरिकों के शिविर में (7.4% प्रसार अनुमान, 100 हेडसेट), यह प्रणाली लगभग 58 वास्तविक मामलों की पहचान करती है और 275 स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹16531 है, तथा प्रति वास्तविक मामले पर कुल 5.7 क्लिनिकल रेफरल होते हैं।",
+      "logistics": "5000 वरिष्ठ नागरिकों के शिविर में (7.4% प्रसार अनुमान, 25 हेडसेट), यह प्रणाली लगभग 288 वास्तविक मामलों की पहचान करती है और 1375 स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹832 है (केवल चिप और इलेक्ट्रोड), तथा प्रति वास्तविक मामले पर कुल 5.8 क्लिनिकल रेफरल होते हैं।",
       "clinical_boundaries": "केवल पूर्व-स्क्रीनिंग लॉजिस्टिक्स और उपकरण बजट योजना सहायता हेतु। यह कोई चिकित्सीय निदान (डायग्नोसिस) नहीं है। यह डॉक्टर के व्यापक परीक्षण का विकल्प नहीं है। अस्पताल में वेट इलेक्ट्रोड द्वारा मूल्यांकित; फील्ड में ड्राई सेंसर में शोर अधिक होगा।"
     },
     "mr": {
+      "source": "template",
       "title": "कार्यकारी अहवाल: 8-चॅनेल ईईजी पूर्व-स्क्रीनिंग हार्डवेअर",
       "summary": "समुदाय आरोग्य पूर्व-स्क्रीनिंग मूल्यमापन: शिफारस केलेले 8-चॅनेल कॉन्फिगरेशन (500 हर्ट्झ) प्रति युनिट ₹9588 खर्चात उपलब्ध आहे (फक्त चिप आणि इलेक्ट्रोड्स). चाचणीत याने 77.8% संवेदनशीलता (±3.4% SD) आणि 29.7 अतिरिक्त रेफरल्स प्रति 100 निरोगी व्यक्ती (±7.4 SD) नोंदवले.",
-      "logistics": "1000 ज्येष्ठ नागरिकांच्या शिबिरात (7.4% गृहीत प्रमाण, 100 हेडसेट), ही यंत्रणा अंदाजे 58 प्रत्यक्ष व्यक्ती शोधते आणि 275 निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹16531 असून, प्रति प्रत्यक्ष प्रकरणासाठी एकूण 5.7 क्लिनिकल रेफरल्स होतात.",
+      "logistics": "5000 ज्येष्ठ नागरिकांच्या शिबिरात (7.4% गृहीत प्रमाण, 25 हेडसेट), ही यंत्रणा अंदाजे 288 प्रत्यक्ष व्यक्ती शोधते आणि 1375 निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹832 असून (फक्त चिप आणि इलेक्ट्रोड्स), प्रति प्रत्यक्ष प्रकरणासाठी एकूण 5.8 क्लिनिकल रेफरल्स होतात.",
       "clinical_boundaries": "फक्त पूर्व-स्क्रीनिंग नियोजन आणि उपकरणांच्या बजेटसाठी सहाय्यक. हे कोणतेही वैद्यकीय निदान (diagnosis) नाही. हे तज्ज्ञ डॉक्टरांच्या तपासणीचा पर्याय नाही. ओल्या इलेक्ट्रोड्सवर आधारित; ग्रामीण भागात ड्राय सेन्सर्स अधिक आवाजी (noise) असू शकतात."
     }
   }

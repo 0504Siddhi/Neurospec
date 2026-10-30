@@ -29,14 +29,15 @@ const state = {
   datasetTitle: 'ds004504 (Real Run)',
   expandedChannels: { 8: true }, // Default expand 8-channel group in table
   
-  // Camp Calculator parameters (Phase 3)
-  campSeniors: 1000,
+  // Camp Calculator parameters: illustrative district scenario (Maharashtra)
+  campSeniors: 5000,
   campDementiaRate: 7.4,
-  campHeadsets: 100,
+  campHeadsets: 25,
 
-  // Program Brief parameters (Task 6)
+  // Program Brief parameters
   briefLang: 'en',
-  briefsData: null
+  briefsData: null,
+  briefsSource: 'template'
 };
 
 // ============================================================================
@@ -46,6 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Ensure default results are set to real data on start
   RESULTS = JSON.parse(JSON.stringify(REAL_RESULTS));
   
+  // Check URL query parameters for demo testing
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('demo') === '1' || urlParams.get('demo') === 'true') {
+    state.isDemoData = true;
+    RESULTS = JSON.parse(JSON.stringify(DEMO_RESULTS));
+  }
+
   // Bind UI control elements
   initControls();
   
@@ -116,12 +124,12 @@ function updateSliderDisplays() {
   if (valSens) valSens.textContent = `${state.minSensitivity}%`;
   if (sensDesc) {
     const missed = 100 - state.minSensitivity;
-    sensDesc.textContent = `${state.minSensitivity}% = up to ${missed} of 100 dementia patients missed`;
+    sensDesc.textContent = `${missed} of 100 people with dementia would be missed`;
   }
 
   if (valRef) valRef.textContent = `${state.maxReferrals} / 100 healthy`;
   if (refDesc) {
-    refDesc.textContent = `${state.maxReferrals} = up to ${state.maxReferrals} healthy seniors per 100 sent for clinic follow-up`;
+    refDesc.textContent = `Up to ${state.maxReferrals} in 100 healthy seniors sent for unnecessary clinic follow-up`;
   }
 }
 
@@ -135,7 +143,7 @@ function initCampCalculatorInputs() {
 
   if (inputSeniors) {
     inputSeniors.addEventListener('input', (e) => {
-      state.campSeniors = Math.max(1, Number(e.target.value) || 1000);
+      state.campSeniors = Math.max(1, Number(e.target.value) || 5000);
       updateDashboard();
     });
   }
@@ -147,7 +155,7 @@ function initCampCalculatorInputs() {
   }
   if (inputHeadsets) {
     inputHeadsets.addEventListener('input', (e) => {
-      state.campHeadsets = Math.max(1, Number(e.target.value) || 100);
+      state.campHeadsets = Math.max(1, Number(e.target.value) || 25);
       updateDashboard();
     });
   }
@@ -407,7 +415,7 @@ function updateDashboard() {
 
   renderRecommendationCard(recommendation, evaluatedSpecs);
   renderCampCalculator(recommendation.spec);
-  renderScatterChart(evaluatedSpecs);
+  renderScatterChart(evaluatedSpecs, recommendation.spec);
   renderComparisonTable(evaluatedSpecs, recommendation.spec);
 }
 
@@ -424,9 +432,8 @@ function renderRecommendationCard(recResult, allSpecs) {
 
   if (recResult.success) {
     const spec = recResult.spec;
-    card.className = 'recommendation-block';
 
-    // Calculate cost gaps against benchmark specs (Phase 2 #7)
+    // Calculate cost gaps against benchmark specs
     const spec19 = allSpecs.find(s => s.channels === 19);
     const cost19 = spec19 ? spec19.cost : 23224;
     const savingsVs19 = cost19 - spec.cost;
@@ -441,156 +448,124 @@ function renderRecommendationCard(recResult, allSpecs) {
       cheaperNote = 'This is the lowest-cost configuration available in the evaluation matrix.';
     }
 
-    // Cohort calculations for new metrics (Task 2)
-    const totalDementia = N * p;
-    const totalHealthy = N * (1 - p);
-    const casesCaught = Math.round(totalDementia * (spec.effective_sensitivity / 100));
-    const healthyReferred = Math.round(totalHealthy * (spec.extra_referrals / 100));
-    const totalReferrals = casesCaught + healthyReferred;
-    const totalHardware = H * spec.cost;
-    const costPerTrueCase = casesCaught > 0 ? Math.round(totalHardware / casesCaught) : 0;
-    const referralsPerTrueCase = casesCaught > 0 ? (totalReferrals / casesCaught).toFixed(1) : '0.0';
-
     card.innerHTML = `
       <div class="rec-meta-row">
-        <span class="rec-kicker">Recommended Specification</span>
-        <span class="rec-rule-tag">Rule: Cheapest within 1 SD of best qualifying</span>
+        <span class="rec-kicker">Recommended Setup</span>
+        <span class="rec-rule-tag">1-SD Rule Selection</span>
       </div>
 
-      <h2 class="rec-headline">
-        ${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz &mdash; ₹${spec.cost.toLocaleString('en-IN')} (chip + electrodes only)
-      </h2>
-
-      <!-- Rule Display in UI (Task 3) -->
-      <div class="rec-rule-explanation">
-        <strong>Recommendation Rule Applied:</strong> Selects the cheapest configuration whose sensitivity is within 1 standard deviation of the best qualifying configuration.<br>
-        • Best qualifying config: <strong>${recResult.bestQualifying.channels} Channels @ ${recResult.bestQualifying.sampling_rate_hz} Hz</strong> (${recResult.bestQualifying.effective_sensitivity}% sensitivity ± ${recResult.bestSD}% SD).<br>
-        • 1-SD margin threshold: <strong>&ge;${recResult.thresholdSensitivity}%</strong> sensitivity.<br>
-        • Selected: <strong>${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz</strong> (achieves ${spec.effective_sensitivity}%, saving ₹${savingsVs19.toLocaleString('en-IN')} per unit vs 19ch).
+      <div>
+        <h2 class="rec-headline">
+          ${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz &mdash; ₹${spec.cost.toLocaleString('en-IN')}
+        </h2>
+        <p class="rec-rule-short">
+          Cheapest setup that still catches at least ${state.minSensitivity} in 100 people with dementia and keeps unnecessary clinic referrals at or below ${state.maxReferrals} per 100 healthy seniors.
+        </p>
       </div>
 
-      <div class="rec-gap-highlight">
-        <strong>Cost Advantage:</strong> Saves <strong>₹${savingsVs19.toLocaleString('en-IN')} per unit</strong> compared to a 19-channel clinical montage. ${cheaperNote}
-      </div>
-
-      <p class="rec-plain-sentence">
-        At your specified targets (min ${state.minSensitivity}% sensitivity, max ${state.maxReferrals} referrals per 100 healthy), 
-        <strong>${spec.channels} channels at ${spec.sampling_rate_hz} Hz</strong> provides the optimal balance. 
-        Sampling rate does not alter hardware cost in this model.
-      </p>
-
-      <div class="rec-exclusions-note">
-        * Cost excludes PCB, enclosure, battery, leads, and reference/bias electrodes.
-      </div>
-
-      <!-- Granular metrics (Task 2: added Cost/True Case and Referrals/True Case) -->
-      <div class="rec-metrics-row">
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Screening Sensitivity</span>
-          <span class="rec-metric-val">${spec.effective_sensitivity}%</span>
-          <span class="rec-metric-sub">${spec.sensitivity_std ? `±${spec.sensitivity_std}% SD` : 'Patients flagged'}</span>
+      <div class="rec-metrics-grid">
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Unit Cost</span>
+          <span class="rec-metric-val">₹${spec.cost.toLocaleString('en-IN')}</span>
+          <span class="rec-metric-sub">chip + electrodes only</span>
         </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Extra Referrals</span>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Screening Sensitivity</span>
+          <span class="rec-metric-val">${spec.effective_sensitivity}%</span>
+          <span class="rec-metric-sub">${spec.sensitivity_std ? `±${spec.sensitivity_std}% SD` : 'Patients caught'}</span>
+        </div>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Extra Referrals</span>
           <span class="rec-metric-val">${spec.extra_referrals}</span>
           <span class="rec-metric-sub">${spec.extra_referrals_std ? `±${spec.extra_referrals_std} SD` : 'per 100 healthy'}</span>
         </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Unit Cost (Headline)</span>
-          <span class="rec-metric-val">₹${spec.cost.toLocaleString('en-IN')}</span>
-          <span class="rec-metric-sub">chip + electrodes</span>
-        </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Cost / True Case</span>
-          <span class="rec-metric-val">₹${costPerTrueCase.toLocaleString('en-IN')}</span>
-          <span class="rec-metric-sub">in ${N} cohort</span>
-        </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Referrals / Case</span>
-          <span class="rec-metric-val">${referralsPerTrueCase}</span>
-          <span class="rec-metric-sub">total clinic load</span>
-        </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Best-Value Option</span>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Best-Value Option</span>
           <span class="rec-metric-val">${spec.isPareto ? 'Yes' : 'No'}</span>
           <span class="rec-metric-sub">${spec.isPareto ? 'On Pareto frontier' : 'Dominated'}</span>
         </div>
       </div>
+
+      <div class="rec-advantage-note">
+        <strong>Cost Advantage:</strong> Saves <strong>₹${savingsVs19.toLocaleString('en-IN')} per unit</strong> compared to a 19-channel clinical montage. ${cheaperNote}
+      </div>
+
+      <details class="rec-rule-details">
+        <summary class="rec-rule-summary-btn">
+          How was this chosen? (1-SD Rule Details)
+        </summary>
+        <div class="rec-rule-expanded-content">
+          <p>
+            <strong>Recommendation Rule:</strong> Selects the cheapest configuration whose sensitivity is within 1 standard deviation of the highest-performing qualifying configuration.
+          </p>
+          <ul>
+            <li><strong>Best qualifying config:</strong> ${recResult.bestQualifying.channels} Channels @ ${recResult.bestQualifying.sampling_rate_hz} Hz (${recResult.bestQualifying.effective_sensitivity}% sensitivity ± ${recResult.bestSD}% SD).</li>
+            <li><strong>1-SD margin threshold:</strong> &ge;${recResult.thresholdSensitivity}% sensitivity.</li>
+            <li><strong>Selected config:</strong> ${spec.channels} Channels @ ${spec.sampling_rate_hz} Hz meets the &ge;${recResult.thresholdSensitivity}% threshold at ₹${spec.cost.toLocaleString('en-IN')}, achieving ₹${savingsVs19.toLocaleString('en-IN')} savings per headset vs 19 channels.</li>
+          </ul>
+        </div>
+      </details>
+
+      <div class="rec-disclaimer-footnote">
+        * Cost reflects chip + electrodes only (listing prices to be confirmed, date not recorded). Excludes PCB, enclosure, battery, leads, and reference/bias electrodes. Sampling rate does not alter hardware cost in this model.
+      </div>
     `;
   } else {
-    // Empty state (Phase 1 #3)
+    // Empty state / Fallback mode
     const closest = recResult.spec;
-    card.className = 'recommendation-block fallback-mode';
 
     let missExplanation = '';
     const sensShortfall = (state.minSensitivity - closest.effective_sensitivity).toFixed(1);
     const refExcess = (closest.extra_referrals - state.maxReferrals).toFixed(1);
 
     if (!closest.meetsSensitivity && !closest.meetsReferrals) {
-      missExplanation = `Misses sensitivity by ${sensShortfall} pts and too many referrals by +${refExcess}`;
+      missExplanation = `Misses sensitivity by ${sensShortfall} pts and exceeds referral ceiling by +${refExcess}`;
     } else if (!closest.meetsSensitivity) {
-      missExplanation = `Misses sensitivity by ${sensShortfall} pts`;
+      missExplanation = `Misses sensitivity by ${sensShortfall} pts (${closest.effective_sensitivity}% < ${state.minSensitivity}%)`;
     } else {
-      missExplanation = `Too many referrals by +${refExcess}`;
+      missExplanation = `Exceeds referral ceiling by +${refExcess} (${closest.extra_referrals} > ${state.maxReferrals})`;
     }
-
-    // Cohort calculations for closest option
-    const totalDementia = N * p;
-    const totalHealthy = N * (1 - p);
-    const casesCaught = Math.round(totalDementia * (closest.effective_sensitivity / 100));
-    const healthyReferred = Math.round(totalHealthy * (closest.extra_referrals / 100));
-    const totalReferrals = casesCaught + healthyReferred;
-    const totalHardware = H * closest.cost;
-    const costPerTrueCase = casesCaught > 0 ? Math.round(totalHardware / casesCaught) : 0;
-    const referralsPerTrueCase = casesCaught > 0 ? (totalReferrals / casesCaught).toFixed(1) : '0.0';
 
     card.innerHTML = `
       <div class="rec-meta-row">
-        <span class="rec-kicker rec-kicker-warn">No spec meets your limits</span>
+        <span class="rec-kicker" style="color: var(--color-danger-banner);">No Spec Meets Targets</span>
+        <span class="rec-rule-tag" style="background-color: #FEE2E2; border-color: #FCA5A5; color: #991B1B;">Closest Option</span>
       </div>
 
-      <h2 class="rec-headline">
-        No spec meets your limits &mdash; Closest option: ${closest.channels} Channels @ ${closest.sampling_rate_hz} Hz (₹${closest.cost.toLocaleString('en-IN')} chip + electrodes)
-      </h2>
+      <div>
+        <h2 class="rec-headline">
+          No spec meets targets &mdash; Closest: ${closest.channels} Channels @ ${closest.sampling_rate_hz} Hz (₹${closest.cost.toLocaleString('en-IN')})
+        </h2>
+        <p class="rec-rule-short">
+          <strong>${missExplanation}.</strong> Achieved sensitivity is ${closest.effective_sensitivity}% (target &ge;${state.minSensitivity}%) with ${closest.extra_referrals} extra referrals per 100 healthy (ceiling &le;${state.maxReferrals}).
+        </p>
+      </div>
 
-      <p class="rec-plain-sentence">
-        <strong>${missExplanation}.</strong> 
-        Achieved sensitivity is <strong>${closest.effective_sensitivity}%</strong> (target: &ge;${state.minSensitivity}%) 
-        with <strong>${closest.extra_referrals} extra referrals</strong> per 100 healthy (ceiling: &le;${state.maxReferrals}).
-        Consider relaxing constraints or choosing the closest option.
-      </p>
-
-      <div class="rec-metrics-row">
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Closest Sensitivity</span>
-          <span class="rec-metric-val">${closest.effective_sensitivity}%</span>
-          <span class="rec-metric-sub">Target was ${state.minSensitivity}%</span>
-        </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Referrals / 100 healthy</span>
-          <span class="rec-metric-val">${closest.extra_referrals}</span>
-          <span class="rec-metric-sub">Ceiling was ${state.maxReferrals}</span>
-        </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Unit Cost</span>
+      <div class="rec-metrics-grid">
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Closest Unit Cost</span>
           <span class="rec-metric-val">₹${closest.cost.toLocaleString('en-IN')}</span>
-          <span class="rec-metric-sub">chip + electrodes</span>
+          <span class="rec-metric-sub">chip + electrodes only</span>
         </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Cost / True Case</span>
-          <span class="rec-metric-val">₹${costPerTrueCase.toLocaleString('en-IN')}</span>
-          <span class="rec-metric-sub">in ${N} cohort</span>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Sensitivity</span>
+          <span class="rec-metric-val">${closest.effective_sensitivity}%</span>
+          <span class="rec-metric-sub">Target was &ge;${state.minSensitivity}%</span>
         </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Referrals / Case</span>
-          <span class="rec-metric-val">${referralsPerTrueCase}</span>
-          <span class="rec-metric-sub">total clinic load</span>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Referrals / 100 healthy</span>
+          <span class="rec-metric-val">${closest.extra_referrals}</span>
+          <span class="rec-metric-sub">Ceiling was &le;${state.maxReferrals}</span>
         </div>
-        <div class="rec-metric-item">
-          <span class="rec-metric-label">Shortfall</span>
-          <span class="rec-metric-val">${missExplanation.replace('Misses sensitivity by ', '-')}</span>
-          <span class="rec-metric-sub">Gap to requirement</span>
+        <div class="rec-metric-box">
+          <span class="rec-metric-lbl">Shortfall</span>
+          <span class="rec-metric-val">${!closest.meetsSensitivity ? `-${sensShortfall}%` : `+${refExcess}`}</span>
+          <span class="rec-metric-sub">Gap to target</span>
         </div>
+      </div>
+
+      <div class="rec-disclaimer-footnote">
+        * Consider relaxing targets (e.g. lowering minimum sensitivity or increasing referral ceiling) to qualify configurations.
       </div>
     `;
   }
@@ -678,13 +653,103 @@ function renderCampCalculator(selectedSpec) {
   if (precSub) precSub.textContent = `${ratioText} clinic referrals`;
 
   if (hwVal) hwVal.textContent = `₹${totalHardware.toLocaleString('en-IN')}`;
-  if (hwSub) hwSub.textContent = `${H} headsets @ ₹${selectedSpec.cost.toLocaleString('en-IN')}`;
+  if (hwSub) hwSub.textContent = `${H} headsets @ ₹${selectedSpec.cost.toLocaleString('en-IN')} (chip + electrodes only)`;
 
   if (costCaseVal) costCaseVal.textContent = `₹${costPerTrueCase.toLocaleString('en-IN')}`;
-  if (costCaseSub) costCaseSub.textContent = `hardware / true case`;
+  if (costCaseSub) costCaseSub.textContent = `hardware / true case (chip + electrodes only)`;
 
   if (refCaseVal) refCaseVal.textContent = `${referralsPerTrueCase}`;
   if (refCaseSub) refCaseSub.textContent = `total referrals / case`;
+
+  // Render 100-Person Pictogram
+  render100PersonPictogram(p, sensitivity, referralRatePerHealthy);
+}
+
+/**
+ * Renders the 100-person triage outcome pictogram (10 x 10 grid)
+ * scaled per 100 seniors screened, with distinct colours AND symbols for 4 states.
+ */
+function render100PersonPictogram(p, sensitivity, referralRatePerHealthy) {
+  const gridEl = document.getElementById('campPictogramGrid');
+  const legendEl = document.getElementById('campPictogramLegend');
+  if (!gridEl || !legendEl) return;
+
+  // Scale per 100 seniors screened
+  const totalDementia100 = Math.round(100 * p);
+  const totalHealthy100 = 100 - totalDementia100;
+
+  const caught100 = Math.min(totalDementia100, Math.round(totalDementia100 * sensitivity));
+  const missed100 = Math.max(0, totalDementia100 - caught100);
+
+  const falseRef100 = Math.min(totalHealthy100, Math.round(totalHealthy100 * referralRatePerHealthy));
+  const cleanHealthy100 = Math.max(0, totalHealthy100 - falseRef100);
+
+  // Exactly 100 total nodes
+  let nodesHtml = '';
+  let count = 0;
+
+  // 1. Dementia Caught (Deep teal with checkmark ✓)
+  for (let i = 0; i < caught100; i++) {
+    count++;
+    nodesHtml += `
+      <div class="pic-node state-caught" title="Senior #${count}: Dementia caught (flagged for assessment)" role="img" aria-label="Dementia caught">
+        <span class="pic-symbol" aria-hidden="true">&#10003;</span>
+      </div>`;
+  }
+
+  // 2. Dementia Missed (Terracotta with cross ✕)
+  for (let i = 0; i < missed100; i++) {
+    count++;
+    nodesHtml += `
+      <div class="pic-node state-missed" title="Senior #${count}: Dementia missed (false negative, screened out)" role="img" aria-label="Dementia missed">
+        <span class="pic-symbol" aria-hidden="true">&#10005;</span>
+      </div>`;
+  }
+
+  // 3. Healthy Referred Unnecessarily (Warm amber with plus +)
+  for (let i = 0; i < falseRef100; i++) {
+    count++;
+    nodesHtml += `
+      <div class="pic-node state-false-ref" title="Senior #${count}: Healthy referred unnecessarily (unnecessary clinic visit)" role="img" aria-label="Healthy referred unnecessarily">
+        <span class="pic-symbol" aria-hidden="true">+</span>
+      </div>`;
+  }
+
+  // 4. Healthy Not Referred (Calm muted circle with dot •)
+  for (let i = 0; i < cleanHealthy100; i++) {
+    count++;
+    nodesHtml += `
+      <div class="pic-node state-healthy-clean" title="Senior #${count}: Healthy not referred (correct screen out)" role="img" aria-label="Healthy not referred">
+        <span class="pic-symbol" aria-hidden="true">&bull;</span>
+      </div>`;
+  }
+
+  gridEl.innerHTML = nodesHtml;
+
+  // Legend with counts and descriptions
+  legendEl.innerHTML = `
+    <div class="legend-row">
+      <div class="legend-item">
+        <span class="legend-swatch state-caught" aria-hidden="true">&#10003;</span>
+        <span class="legend-label"><strong>${caught100}</strong> Dementia caught <span class="legend-sub">(flagged for assessment)</span></span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-swatch state-missed" aria-hidden="true">&#10005;</span>
+        <span class="legend-label"><strong>${missed100}</strong> Dementia missed <span class="legend-sub">(false negative, screened out)</span></span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-swatch state-false-ref" aria-hidden="true">+</span>
+        <span class="legend-label"><strong>${falseRef100}</strong> Healthy referred unnecessarily <span class="legend-sub">(unnecessary clinic load)</span></span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-swatch state-healthy-clean" aria-hidden="true">&bull;</span>
+        <span class="legend-label"><strong>${cleanHealthy100}</strong> Healthy not referred <span class="legend-sub">(correctly screened out)</span></span>
+      </div>
+    </div>
+    <div class="legend-note">
+      Scaled to 100 seniors at ${state.campDementiaRate}% assumed prevalence (${totalDementia100} with dementia, ${totalHealthy100} healthy).
+    </div>
+  `;
 }
 
 // ============================================================================
@@ -705,15 +770,15 @@ const targetLinePlugin = {
     if (yVal >= chartArea.top && yVal <= chartArea.bottom) {
       ctx.save();
       ctx.beginPath();
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = '#B5532A'; // Burnt orange line
-      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#C2410C'; // Warm Terracotta line
+      ctx.lineWidth = 1.75;
       ctx.moveTo(chartArea.left, yVal);
       ctx.lineTo(chartArea.right, yVal);
       ctx.stroke();
 
-      ctx.fillStyle = '#B5532A';
-      ctx.font = '500 11px IBM Plex Sans, sans-serif';
+      ctx.fillStyle = '#C2410C';
+      ctx.font = '600 12px IBM Plex Sans, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`Target: ${state.minSensitivity}% min`, chartArea.right - 8, yVal - 4);
@@ -732,8 +797,8 @@ const channelLabelPlugin = {
     if (!scales.x || !scales.y) return;
 
     ctx.save();
-    ctx.font = '600 10.5px IBM Plex Mono, monospace';
-    ctx.fillStyle = '#1F2933';
+    ctx.font = '600 12px IBM Plex Mono, monospace';
+    ctx.fillStyle = '#1F2937';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
@@ -763,19 +828,39 @@ const channelLabelPlugin = {
 /**
  * Renders Chart.js scatter plot with stepped Pareto line and distinct shapes/colors.
  */
-function renderScatterChart(evaluatedSpecs) {
+function renderScatterChart(evaluatedSpecs, recommendedSpec) {
+  // Populate accessible screen reader summary below chart
+  const summaryEl = document.getElementById('chartTextSummary');
+  if (summaryEl) {
+    if (recommendedSpec) {
+      summaryEl.innerHTML = `
+        <strong>Screen reader summary:</strong> Across 12 evaluated configurations from 2 to 19 channels, hardware cost ranges from ₹3,996 (2 channels) to ₹23,224 (19 channels). At target limits (&ge;${state.minSensitivity}% sensitivity, &le;${state.maxReferrals} extra referrals), the recommended setup is <strong>${recommendedSpec.channels} Channels @ ${recommendedSpec.sampling_rate_hz} Hz</strong> (₹${recommendedSpec.cost.toLocaleString('en-IN')}, ${recommendedSpec.effective_sensitivity}% sensitivity, ${recommendedSpec.extra_referrals} extra referrals). 19-channel setups achieve 78.0% sensitivity at ₹23,224 (+₹${(23224 - recommendedSpec.cost).toLocaleString('en-IN')} higher cost). Low-channel 2- and 4-channel setups fail the referral ceiling (34.8 to 45.9 extra referrals per 100 healthy).
+      `;
+    } else {
+      summaryEl.innerHTML = `
+        <strong>Screen reader summary:</strong> No tested configuration meets both the minimum sensitivity of ${state.minSensitivity}% and the maximum referral ceiling of ${state.maxReferrals} per 100 healthy seniors. Relax constraints to view qualifying options.
+      `;
+    }
+  }
+
   const canvas = document.getElementById('specScatterChart');
   if (!canvas) return;
+
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js library is not loaded. Skipping chart rendering.');
+    return;
+  }
 
   // Best-value (Pareto) points only (sorted by cost)
   const paretoSpecs = evaluatedSpecs.filter(s => s.isPareto).sort((a, b) => a.cost - b.cost);
   
-  // Real spec points for connecting line (No interpolated points, Phase 2 #9)
+  // Real spec points for connecting line (No interpolated points)
   const paretoLineData = paretoSpecs.map(s => ({
     x: s.cost,
     y: s.effective_sensitivity
   }));
 
+  const recommendedPoints = [];
   const paretoQualPoints = [];
   const paretoFailPoints = [];
   const qualifiedPoints = [];
@@ -788,7 +873,11 @@ function renderScatterChart(evaluatedSpecs) {
       rawSpec: spec
     };
 
-    if (spec.isPareto) {
+    const isRec = recommendedSpec && (spec.channels === recommendedSpec.channels && spec.sampling_rate_hz === recommendedSpec.sampling_rate_hz);
+
+    if (isRec) {
+      recommendedPoints.push(point);
+    } else if (spec.isPareto) {
       if (spec.meetsLimits) {
         paretoQualPoints.push(point);
       } else {
@@ -803,7 +892,7 @@ function renderScatterChart(evaluatedSpecs) {
 
   const chartData = {
     datasets: [
-      // Step line connecting real best-value points (Phase 2 #9)
+      // Step line connecting real best-value points
       {
         type: 'line',
         label: 'Best-Value Step Line',
@@ -811,50 +900,63 @@ function renderScatterChart(evaluatedSpecs) {
         showLine: true,
         stepped: 'before',
         fill: false,
-        borderColor: '#B5532A',
-        borderWidth: 1.75,
+        borderColor: '#134E4A',
+        borderWidth: 1.5,
         pointRadius: 0,
         hoverRadius: 0,
-        order: 3
+        order: 4
       },
-      // Best-Value (Meets limits): Burnt orange solid star (Phase 4 #17)
+      // Recommended configuration: highlighted with terracotta
+      {
+        type: 'scatter',
+        label: 'Recommended Setup',
+        data: recommendedPoints,
+        backgroundColor: '#C2410C',
+        borderColor: '#9A3412',
+        borderWidth: 2,
+        pointRadius: 8.5,
+        pointHoverRadius: 11,
+        pointStyle: 'circle',
+        order: 1
+      },
+      // Best-Value (Meets limits): Deep teal filled rectangle
       {
         type: 'scatter',
         label: 'Best-Value (Meets Limits)',
         data: paretoQualPoints,
-        backgroundColor: '#B5532A',
-        borderColor: '#B5532A',
+        backgroundColor: '#134E4A',
+        borderColor: '#134E4A',
         borderWidth: 1.5,
-        pointRadius: 8,
-        pointHoverRadius: 11,
-        pointStyle: 'star',
-        order: 1
+        pointRadius: 6.5,
+        pointHoverRadius: 9.5,
+        pointStyle: 'rectRot',
+        order: 2
       },
-      // Best-Value (Outside limits): Burnt orange hollow triangle (Phase 4 #17)
+      // Best-Value (Outside limits): Deep teal hollow triangle
       {
         type: 'scatter',
         label: 'Best-Value (Outside Limits)',
         data: paretoFailPoints,
-        backgroundColor: '#F6F3EC',
-        borderColor: '#B5532A',
-        borderWidth: 2,
-        pointRadius: 8,
-        pointHoverRadius: 11,
+        backgroundColor: '#FAF8F5',
+        borderColor: '#134E4A',
+        borderWidth: 1.5,
+        pointRadius: 6.5,
+        pointHoverRadius: 9.5,
         pointStyle: 'triangle',
-        order: 1
+        order: 2
       },
-      // Standard (Meets limits): Deep teal filled rectangle/square
+      // Standard (Meets limits): Medium teal
       {
         type: 'scatter',
         label: 'Meets Limits',
         data: qualifiedPoints,
-        backgroundColor: '#1F6F6B',
-        borderColor: '#1F6F6B',
+        backgroundColor: '#0F766E',
+        borderColor: '#0F766E',
         borderWidth: 1,
-        pointRadius: 6,
-        pointHoverRadius: 9,
-        pointStyle: 'rectRot',
-        order: 2
+        pointRadius: 5.5,
+        pointHoverRadius: 8,
+        pointStyle: 'rect',
+        order: 3
       },
       // Standard (Outside limits): Muted grey hollow circle
       {
@@ -862,12 +964,12 @@ function renderScatterChart(evaluatedSpecs) {
         label: 'Outside Limits',
         data: failingPoints,
         backgroundColor: '#FAF8F5',
-        borderColor: '#6E695F',
+        borderColor: '#9CA3AF',
         borderWidth: 1.5,
         pointRadius: 5,
-        pointHoverRadius: 8,
+        pointHoverRadius: 7.5,
         pointStyle: 'circle',
-        order: 2
+        order: 3
       }
     ]
   };
@@ -895,13 +997,13 @@ function renderScatterChart(evaluatedSpecs) {
           display: false
         },
         tooltip: {
-          backgroundColor: '#1F2933',
-          titleColor: '#F6F3EC',
-          bodyColor: '#E2DDD5',
-          titleFont: { family: 'Source Serif 4, Georgia, serif', size: 13, weight: '600' },
-          bodyFont: { family: 'IBM Plex Sans, sans-serif', size: 12 },
+          backgroundColor: '#1F2937',
+          titleColor: '#F9FAFB',
+          bodyColor: '#E5E7EB',
+          titleFont: { family: 'Source Serif 4, Georgia, serif', size: 14, weight: '600' },
+          bodyFont: { family: 'IBM Plex Sans, sans-serif', size: 13 },
           padding: 10,
-          cornerRadius: 2,
+          cornerRadius: 4,
           displayColors: true,
           boxWidth: 8,
           boxHeight: 8,
@@ -921,7 +1023,7 @@ function renderScatterChart(evaluatedSpecs) {
                 `Est. Cost: ₹${raw.cost.toLocaleString('en-IN')} (chip + electrodes)`,
                 `Sensitivity: ${raw.effective_sensitivity}%${sdSens}`,
                 `Extra Referrals: ${raw.extra_referrals}${sdRef} per 100 healthy`,
-                `Status: ${raw.meetsLimits ? 'Qualifies' : raw.failureReason}`,
+                `Status: ${raw.meetsLimits ? 'Meets limits' : raw.failureReason}`,
                 `Best-Value Option: ${raw.isPareto ? 'Yes (on frontier)' : 'No'}`
               ];
             }
@@ -933,17 +1035,17 @@ function renderScatterChart(evaluatedSpecs) {
           title: {
             display: true,
             text: 'Unit Hardware Cost — Chip + Electrodes (INR ₹)',
-            font: { family: 'IBM Plex Sans, sans-serif', size: 12, weight: '500' },
-            color: '#36332E'
+            font: { family: 'IBM Plex Sans, sans-serif', size: 13, weight: '600' },
+            color: '#1F2937'
           },
           grid: {
-            color: '#E2DDD5',
+            color: '#E5E0D8',
             borderDash: [2, 2],
             drawBorder: false
           },
           ticks: {
-            font: { family: 'IBM Plex Mono, monospace', size: 11 },
-            color: '#36332E',
+            font: { family: 'IBM Plex Mono, monospace', size: 12 },
+            color: '#4B5563',
             callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
           }
         },
@@ -951,20 +1053,20 @@ function renderScatterChart(evaluatedSpecs) {
           title: {
             display: true,
             text: 'Screening Sensitivity (%)',
-            font: { family: 'IBM Plex Sans, sans-serif', size: 12, weight: '500' },
-            color: '#36332E'
+            font: { family: 'IBM Plex Sans, sans-serif', size: 13, weight: '600' },
+            color: '#1F2937'
           },
           min: 65,
           max: 98,
           grid: {
-            color: '#E2DDD5',
+            color: '#E5E0D8',
             borderDash: [2, 2],
             drawBorder: false
           },
           ticks: {
             stepSize: 5,
-            font: { family: 'IBM Plex Mono, monospace', size: 11 },
-            color: '#36332E',
+            font: { family: 'IBM Plex Mono, monospace', size: 12 },
+            color: '#4B5563',
             callback: (val) => val + '%'
           }
         }
@@ -976,6 +1078,27 @@ function renderScatterChart(evaluatedSpecs) {
 // ============================================================================
 // 5. COMPARISON TABLE RENDERING (GROUPED WITH EXPANDABLE SUB-ROWS)
 // ============================================================================
+
+/**
+ * Formats table status cell text.
+ */
+function formatStatusCell(spec) {
+  if (spec.meetsLimits) {
+    return `<span class="status-pass">✓ Meets limits</span>${spec.isPareto ? ' <span class="table-pareto-tag">[Best-Value]</span>' : ''}`;
+  }
+  const sensShortfall = (state.minSensitivity - spec.effective_sensitivity).toFixed(1);
+  const refExcess = (spec.extra_referrals - state.maxReferrals).toFixed(1);
+
+  let msg = '';
+  if (!spec.meetsSensitivity && !spec.meetsReferrals) {
+    msg = `Misses sensitivity by ${sensShortfall}%, referral limit by ${refExcess}`;
+  } else if (!spec.meetsSensitivity) {
+    msg = `Misses sensitivity by ${sensShortfall}%`;
+  } else {
+    msg = `Misses referral limit by ${refExcess}`;
+  }
+  return `<span class="status-fail">${msg}</span>${spec.isPareto ? ' <span class="table-pareto-tag">[Best-Value]</span>' : ''}`;
+}
 
 /**
  * Groups specs by channel count and renders primary rows with expandable sub-rows.
@@ -1021,7 +1144,6 @@ function renderComparisonTable(evaluatedSpecs, recommendedSpec) {
 
     const isExpanded = !!state.expandedChannels[ch];
     const groupHasRecommended = recommendedSpec && (recommendedSpec.channels === ch);
-    const qualifyingInGroup = specsInGroup.filter(s => s.meetsLimits).length;
     const primarySpec = specsInGroup[0]; // 500 Hz spec or representative
 
     const groupRowClass = groupHasRecommended ? 'row-recommended group-header-row' : 'group-header-row';
@@ -1035,56 +1157,53 @@ function renderComparisonTable(evaluatedSpecs, recommendedSpec) {
             <span class="expand-icon">${chevron}</span>
           </button>
         </td>
-        <td class="col-num font-bold">
+        <td class="col-num col-ch font-bold">
           ${ch} Channels
           ${groupHasRecommended ? '<span class="best-rec-indicator">Recommended</span>' : ''}
         </td>
-        <td class="col-num font-mono">
+        <td class="col-num col-rate font-mono">
           ${primarySpec.sampling_rate_hz} Hz <span class="sub-rate-hint">(${specsInGroup.length} rates)</span>
         </td>
-        <td class="col-num font-mono">₹${primarySpec.cost.toLocaleString('en-IN')}</td>
-        <td class="col-num font-mono">
+        <td class="col-num col-cost font-mono">₹${primarySpec.cost.toLocaleString('en-IN')}</td>
+        <td class="col-num col-sens font-mono">
           ${primarySpec.effective_sensitivity}%
           ${primarySpec.sensitivity_std ? `<span class="sd-text">±${primarySpec.sensitivity_std}%</span>` : ''}
         </td>
-        <td class="col-num font-mono">
+        <td class="col-num col-ref font-mono">
           ${primarySpec.extra_referrals}
           ${primarySpec.extra_referrals_std ? `<span class="sd-text">±${primarySpec.extra_referrals_std}</span>` : ''}
         </td>
         <td class="col-status">
-          ${primarySpec.meetsLimits 
-            ? `<span class="status-qualifies">✓ Qualifies</span>` 
-            : `<span class="status-fails">${primarySpec.failureReason}</span>`}
-          ${primarySpec.isPareto ? '<span class="table-pareto-tag">[Best-Value]</span>' : ''}
+          ${formatStatusCell(primarySpec)}
         </td>
       </tr>
     `;
 
     // Expandable sub-rows for all sampling rates
     if (isExpanded) {
-      specsInGroup.forEach((spec, idx) => {
+      specsInGroup.forEach((spec) => {
         const isRecSub = recommendedSpec && (spec.channels === recommendedSpec.channels && spec.sampling_rate_hz === recommendedSpec.sampling_rate_hz);
         const subRowClass = `sub-row ${isRecSub ? 'sub-row-recommended' : ''}`;
 
         html += `
           <tr class="${subRowClass}">
             <td class="col-expand sub-indent-cell">&boxur;</td>
-            <td class="col-num sub-text-muted">${spec.channels} ch</td>
-            <td class="col-num font-mono font-bold">${spec.sampling_rate_hz} Hz</td>
-            <td class="col-num font-mono">₹${spec.cost.toLocaleString('en-IN')}</td>
-            <td class="col-num font-mono">
+            <td class="col-num col-ch sub-text-muted">${spec.channels} ch</td>
+            <td class="col-num col-rate font-mono font-bold">
+              ${spec.sampling_rate_hz} Hz
+              ${isRecSub ? '<span class="best-rec-indicator">Recommended</span>' : ''}
+            </td>
+            <td class="col-num col-cost font-mono">₹${spec.cost.toLocaleString('en-IN')}</td>
+            <td class="col-num col-sens font-mono">
               ${spec.effective_sensitivity}%
               ${spec.sensitivity_std ? `<span class="sd-text">±${spec.sensitivity_std}%</span>` : ''}
             </td>
-            <td class="col-num font-mono">
+            <td class="col-num col-ref font-mono">
               ${spec.extra_referrals}
               ${spec.extra_referrals_std ? `<span class="sd-text">±${spec.extra_referrals_std}</span>` : ''}
             </td>
             <td class="col-status">
-              ${spec.meetsLimits 
-                ? `<span class="status-qualifies">✓ Qualifies</span>` 
-                : `<span class="status-fails">${spec.failureReason}</span>`}
-              ${spec.isPareto ? '<span class="table-pareto-tag">[Best-Value]</span>' : ''}
+              ${formatStatusCell(spec)}
             </td>
           </tr>
         `;
@@ -1120,10 +1239,10 @@ function renderComparisonTable(evaluatedSpecs, recommendedSpec) {
     if (indicator) {
       if (col === state.sortColumn) {
         indicator.textContent = state.sortAscending ? '▲' : '▼';
-        indicator.style.color = '#1F6F6B';
+        indicator.style.color = '#134E4A';
       } else {
         indicator.textContent = '↕';
-        indicator.style.color = '#6E695F';
+        indicator.style.color = '#6B7280';
       }
     }
   });
@@ -1282,9 +1401,9 @@ function initActionButtons() {
       state.simulateNoise = false;
       state.isDemoData = false;
       state.customFileName = null;
-      state.campSeniors = 1000;
+      state.campSeniors = 5000;
       state.campDementiaRate = 7.4;
-      state.campHeadsets = 100;
+      state.campHeadsets = 25;
 
       const sliderSens = document.getElementById('sliderSensitivity');
       const sliderRef = document.getElementById('sliderReferrals');
@@ -1301,9 +1420,9 @@ function initActionButtons() {
       const inputSeniors = document.getElementById('calcSeniorsScreened');
       const inputRate = document.getElementById('calcDementiaRate');
       const inputHeadsets = document.getElementById('calcHeadsets');
-      if (inputSeniors) inputSeniors.value = 1000;
+      if (inputSeniors) inputSeniors.value = 5000;
       if (inputRate) inputRate.value = 7.4;
-      if (inputHeadsets) inputHeadsets.value = 100;
+      if (inputHeadsets) inputHeadsets.value = 25;
 
       COSTS = JSON.parse(JSON.stringify(DEFAULT_COSTS));
       initCostInputs();
@@ -1377,44 +1496,6 @@ function initActionButtons() {
     });
   }
 
-  // Maharashtra District Camp preset (Task 4)
-  const presetMahaCamp = document.getElementById('presetMahaCamp');
-  const presetStandardCamp = document.getElementById('presetStandardCamp');
-
-  if (presetMahaCamp) {
-    presetMahaCamp.addEventListener('click', () => {
-      state.campSeniors = 5000;
-      state.campDementiaRate = 7.4;
-      state.campHeadsets = 25;
-      const inputSeniors = document.getElementById('calcSeniorsScreened');
-      const inputRate = document.getElementById('calcDementiaRate');
-      const inputHeadsets = document.getElementById('calcHeadsets');
-      if (inputSeniors) inputSeniors.value = 5000;
-      if (inputRate) inputRate.value = 7.4;
-      if (inputHeadsets) inputHeadsets.value = 25;
-      presetMahaCamp.classList.add('active');
-      if (presetStandardCamp) presetStandardCamp.classList.remove('active');
-      updateDashboard();
-    });
-  }
-
-  if (presetStandardCamp) {
-    presetStandardCamp.addEventListener('click', () => {
-      state.campSeniors = 1000;
-      state.campDementiaRate = 7.4;
-      state.campHeadsets = 100;
-      const inputSeniors = document.getElementById('calcSeniorsScreened');
-      const inputRate = document.getElementById('calcDementiaRate');
-      const inputHeadsets = document.getElementById('calcHeadsets');
-      if (inputSeniors) inputSeniors.value = 1000;
-      if (inputRate) inputRate.value = 7.4;
-      if (inputHeadsets) inputHeadsets.value = 100;
-      presetStandardCamp.classList.add('active');
-      if (presetMahaCamp) presetMahaCamp.classList.remove('active');
-      updateDashboard();
-    });
-  }
-
   // 5. Print / Save PDF
   const btnPrint = document.getElementById('btnPrint');
   if (btnPrint) {
@@ -1482,11 +1563,13 @@ function initProgramBrief() {
     })
     .then(data => {
       state.briefsData = data.briefs;
+      state.briefsSource = data.source || 'template';
       renderProgramBrief(state.briefLang);
     })
     .catch(err => {
       console.warn('Could not load ai/briefs.json via fetch, using bundled brief:', err);
       state.briefsData = DEFAULT_BRIEFS;
+      state.briefsSource = 'template';
       renderProgramBrief(state.briefLang);
     });
 }
@@ -1514,6 +1597,12 @@ function renderProgramBrief(lang) {
   const summaryEl = document.getElementById('briefSummary');
   const logisticsEl = document.getElementById('briefLogistics');
   const boundariesEl = document.getElementById('briefBoundaries');
+  const badgeEl = document.getElementById('briefBadge') || document.querySelector('.brief-warning-badge');
+
+  if (badgeEl) {
+    const isLLM = brief.source === 'llm' || state.briefsSource === 'llm';
+    badgeEl.textContent = isLLM ? 'AI-generated, verify before use.' : 'Template-generated summary';
+  }
 
   if (titleEl) titleEl.textContent = brief.title;
   if (summaryEl) summaryEl.textContent = brief.summary;
@@ -1523,21 +1612,24 @@ function renderProgramBrief(lang) {
 
 const DEFAULT_BRIEFS = {
   en: {
+    source: "template",
     title: "Executive Brief: 8-Channel EEG Pre-Screening Hardware",
     summary: "Evaluation for community health screening: The recommended 8-channel configuration operating at 500 Hz costs ₹9,588 per unit (chip and electrodes only). In empirical testing, it achieved 77.8% sensitivity (±3.4% SD) with 29.7 extra referrals per 100 healthy individuals (±7.4 SD).",
-    logistics: "In a simulated field camp of 1,000 seniors (7.4% assumed prevalence, 100 headsets), this hardware catches approximately 58 true cases while referring 275 healthy seniors to secondary clinics. Capital hardware cost per true case identified is ₹16,531, with 5.7 total clinic referrals per true case caught.",
+    logistics: "In a simulated field camp of 5,000 seniors (7.4% assumed prevalence, 25 headsets), this hardware catches approximately 288 true cases while referring 1,375 healthy seniors to secondary clinics. Capital hardware cost per true case identified is ₹832 (chip + electrodes only), with 5.8 total clinic referrals per true case caught.",
     clinical_boundaries: "Screening logistics and hardware budgeting support only. Not a diagnostic device. Does not provide clinical confirmation or replace physician evaluation. Recorded using wet electrodes in hospital settings; field dry sensors will exhibit higher contact noise."
   },
   hi: {
+    source: "template",
     title: "कार्यकारी सारांश: 8-चैनल ईईजी पूर्व-स्क्रीनिंग हार्डवेयर",
     summary: "सामुदायिक स्वास्थ्य पूर्व-स्क्रीनिंग मूल्यांकन: अनुशंसित 8-चैनल कॉन्फ़िगरेशन (500 हर्ट्ज़) की प्रति यूनिट हार्डवेयर लागत ₹9,588 है (केवल चिप और इलेक्ट्रोड)। परीक्षण में इसने 77.8% संवेदनशीलता (±3.4% SD) तथा 29.7 अतिरिक्त रेफरल प्रति 100 स्वस्थ व्यक्ति (±7.4 SD) प्राप्त किए।",
-    logistics: "1,000 वरिष्ठ नागरिकों के शिविर में (7.4% प्रसार अनुमान, 100 हेडसेट), यह प्रणाली लगभग 58 वास्तविक मामलों की पहचान करती है और 275 स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹16,531 है, तथा प्रति वास्तविक मामले पर कुल 5.7 क्लिनिकल रेफरल होते हैं।",
+    logistics: "5,000 वरिष्ठ नागरिकों के शिविर में (7.4% प्रसार अनुमान, 25 हेडसेट), यह प्रणाली लगभग 288 वास्तविक मामलों की पहचान करती है और 1,375 स्वस्थ व्यक्तियों को द्वितीयक क्लीनिक में रेफर करती है। पहचाने गए प्रति वास्तविक मामले पर हार्डवेयर लागत ₹832 है (केवल चिप और इलेक्ट्रोड), तथा प्रति वास्तविक मामले पर कुल 5.8 क्लिनिकल रेफरल होते हैं।",
     clinical_boundaries: "केवल पूर्व-स्क्रीनिंग लॉजिस्टिक्स और उपकरण बजट योजना सहायता हेतु। यह कोई चिकित्सीय निदान (डायग्नोसिस) नहीं है। यह डॉक्टर के व्यापक परीक्षण का विकल्प नहीं है। अस्पताल में वेट इलेक्ट्रोड द्वारा मूल्यांकित; फील्ड में ड्राई सेंसर में शोर अधिक होगा।"
   },
   mr: {
+    source: "template",
     title: "कार्यकारी अहवाल: 8-चॅनेल ईईजी पूर्व-स्क्रीनिंग हार्डवेअर",
     summary: "समुदाय आरोग्य पूर्व-स्क्रीनिंग मूल्यमापन: शिफारस केलेले 8-चॅनेल कॉन्फिगरेशन (500 हर्ट्झ) प्रति युनिट ₹9,588 खर्चात उपलब्ध आहे (फक्त चिप आणि इलेक्ट्रोड्स). चाचणीत याने 77.8% संवेदनशीलता (±3.4% SD) आणि 29.7 अतिरिक्त रेफरल्स प्रति 100 निरोगी व्यक्ती (±7.4 SD) नोंदवले.",
-    logistics: "1,000 ज्येष्ठ नागरिकांच्या शिबिरात (7.4% गृहीत प्रमाण, 100 हेडसेट), ही यंत्रणा अंदाजे 58 प्रत्यक्ष व्यक्ती शोधते आणि 275 निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹16,531 असून, प्रति प्रत्यक्ष प्रकरणासाठी एकूण 5.7 क्लिनिकल रेफरल्स होतात.",
+    logistics: "5,000 ज्येष्ठ नागरिकांच्या शिबिरात (7.4% गृहीत प्रमाण, 25 हेडसेट), ही यंत्रणा अंदाजे 288 प्रत्यक्ष व्यक्ती शोधते आणि 1,375 निरोगी व्यक्तींना पुढील क्लिनिक तपासणीसाठी रेफर करते. प्रति प्रत्यक्ष शोधलेल्या प्रकरणासाठी हार्डवेअर खर्च ₹832 असून (फक्त चिप आणि इलेक्ट्रोड्स), प्रति प्रत्यक्ष प्रकरणासाठी एकूण 5.8 क्लिनिकल रेफरल्स होतात.",
     clinical_boundaries: "फक्त पूर्व-स्क्रीनिंग नियोजन आणि उपकरणांच्या बजेटसाठी सहाय्यक. हे कोणतेही वैद्यकीय निदान (diagnosis) नाही. हे तज्ज्ञ डॉक्टरांच्या तपासणीचा पर्याय नाही. ओल्या इलेक्ट्रोड्सवर आधारित; ग्रामीण भागात ड्राय सेन्सर्स अधिक आवाजी (noise) असू शकतात."
   }
 };

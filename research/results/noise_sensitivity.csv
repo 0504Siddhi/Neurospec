@@ -1,0 +1,9 @@
+configuration,channels,snr_db,sensitivity_pct,sensitivity_std,extra_referrals_per_100_healthy,extra_referrals_std,noise_condition
+19_channels,19,Clean,66.7,0.0,33.3,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+8_channels,8,Clean,66.7,0.0,66.7,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+19_channels,19,20,83.3,0.0,33.3,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+8_channels,8,20,66.7,0.0,50.0,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+19_channels,19,10,83.3,0.0,16.7,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+8_channels,8,10,83.3,0.0,50.0,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+19_channels,19,5,83.3,0.0,16.7,0.0,"SIMULATED NOISE, not measured on dry electrodes"
+8_channels,8,5,83.3,0.0,33.3,0.0,"SIMULATED NOISE, not measured on dry electrodes"
