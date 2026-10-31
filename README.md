@@ -8,6 +8,8 @@ Built for **Hack for Social Cause (VBYLD 2027)**, theme: Elderly Care & Healthy 
 
 > **Screening support only. Not a diagnosis.** NeuroSpec does not diagnose dementia and is not clinically validated.
 
+![NeuroSpec dashboard: recommended 8-channel setup](docs/screenshots/01-recommendation.png)
+
 ---
 
 ## Problem and who it is for
@@ -27,6 +29,22 @@ NeuroSpec is built for programme managers and public health procurement teams. F
 - **Program Brief** in English, Hindi and Marathi (see below).
 - **Editable costs** and **CSV upload**, so a programme can use its own trial results.
 - **Real results by default.** Illustrative demo data is available only behind an explicit toggle, with a persistent red banner.
+
+---
+
+## Screenshots
+
+**Plan a screening camp (illustrative scenario)**
+![Camp calculator](docs/screenshots/02-camp-calculator.png)
+
+**Compare every setup**
+![Cost vs sensitivity chart and specification table](docs/screenshots/03-chart-and-table.png)
+
+**Limitations and Program Brief**
+![Limitations and Program Brief](docs/screenshots/04-limitations-and-brief.png)
+
+**Editable costs and CSV upload**
+![Cost assumptions and upload](docs/screenshots/05-costs-and-upload.png)
 
 ---
 
