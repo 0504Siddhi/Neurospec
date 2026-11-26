@@ -19,8 +19,8 @@
 const state = {
   minSensitivity: 75,          // Default 75% min sensitivity (Phase 1)
   maxReferrals: 30,            // Default 30 max extra referrals per 100 healthy (Phase 1)
-  simulateNoise: false,        // Illustrative toggle: lowers sensitivity by 4.0%
-  noisePenalty: 4.0,           // Constant penalty amount when noise is simulated
+  simulateNoise: false,        // Illustrative flag: true when noisePenalty > 0
+  noisePenalty: 0,             // Range slider penalty in percentage points (0 to 15, default 0)
   isDemoData: false,           // Default false: load real run results by default (Phase 1)
   sortColumn: 'cost',          // Active column for sorting specs table
   sortAscending: true,         // Sort direction
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initControls() {
   const sliderSensitivity = document.getElementById('sliderSensitivity');
   const sliderReferrals = document.getElementById('sliderReferrals');
-  const toggleNoise = document.getElementById('toggleNoise');
+  const sliderNoise = document.getElementById('sliderNoise');
 
   // Sensitivity Slider Listener
   sliderSensitivity.addEventListener('input', (e) => {
@@ -101,10 +101,12 @@ function initControls() {
     updateDashboard();
   });
 
-  // Simulate Noisier Sensors Toggle Listener
-  if (toggleNoise) {
-    toggleNoise.addEventListener('change', (e) => {
-      state.simulateNoise = e.target.checked;
+  // Simulate Noisier Sensors Slider Listener
+  if (sliderNoise) {
+    sliderNoise.addEventListener('input', (e) => {
+      state.noisePenalty = Number(e.target.value);
+      state.simulateNoise = state.noisePenalty > 0;
+      updateSliderDisplays();
       updateDashboard();
     });
   }
@@ -120,6 +122,9 @@ function updateSliderDisplays() {
   const sensDesc = document.getElementById('sensitivityMeaningDesc');
   const valRef = document.getElementById('valReferrals');
   const refDesc = document.getElementById('referralsMeaningDesc');
+  const valNoise = document.getElementById('valNoise');
+  const noiseNote = document.getElementById('noiseNote');
+  const sliderNoise = document.getElementById('sliderNoise');
 
   if (valSens) valSens.textContent = `${state.minSensitivity}%`;
   if (sensDesc) {
@@ -130,6 +135,17 @@ function updateSliderDisplays() {
   if (valRef) valRef.textContent = `${state.maxReferrals} / 100 healthy`;
   if (refDesc) {
     refDesc.textContent = `Up to ${state.maxReferrals} in 100 healthy seniors sent for unnecessary clinic follow-up`;
+  }
+
+  if (valNoise) {
+    valNoise.textContent = `-${state.noisePenalty.toFixed(1)}%`;
+  }
+  if (noiseNote) {
+    noiseNote.textContent = `ASSUMPTION: flat -${state.noisePenalty.toFixed(1)}% sensitivity, not measured`;
+  }
+  if (sliderNoise) {
+    sliderNoise.setAttribute('aria-valuenow', String(state.noisePenalty));
+    sliderNoise.setAttribute('aria-valuetext', `-${state.noisePenalty.toFixed(1)}%`);
   }
 }
 
@@ -246,7 +262,7 @@ function updateBanner() {
  * Evaluates all specs against current cost model, noise settings, and constraints.
  */
 function evaluateSpecifications() {
-  const penalty = state.simulateNoise ? state.noisePenalty : 0;
+  const penalty = Number(state.noisePenalty) || 0;
 
   // 1. Calculate effective metrics for each specification
   const evaluated = RESULTS.map((spec, index) => {
@@ -1399,6 +1415,7 @@ function initActionButtons() {
       state.minSensitivity = 75;
       state.maxReferrals = 30;
       state.simulateNoise = false;
+      state.noisePenalty = 0;
       state.isDemoData = false;
       state.customFileName = null;
       state.campSeniors = 5000;
@@ -1407,13 +1424,13 @@ function initActionButtons() {
 
       const sliderSens = document.getElementById('sliderSensitivity');
       const sliderRef = document.getElementById('sliderReferrals');
-      const toggleNoise = document.getElementById('toggleNoise');
+      const sliderNoise = document.getElementById('sliderNoise');
       const csvInput = document.getElementById('csvFileInput');
       const feedback = document.getElementById('uploadFeedback');
 
       if (sliderSens) sliderSens.value = 75;
       if (sliderRef) sliderRef.value = 30;
-      if (toggleNoise) toggleNoise.checked = false;
+      if (sliderNoise) sliderNoise.value = 0;
       if (csvInput) csvInput.value = '';
       if (feedback) feedback.textContent = '';
 

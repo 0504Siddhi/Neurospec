@@ -108,15 +108,20 @@
           <div class="control-readout" id="referralsMeaningDesc">Up to 30 in 100 healthy seniors sent for unnecessary clinic follow-up</div>
         </div>
 
-        <div class="control-group noise-toggle-group" id="noiseToggleContainer">
-          <label class="checkbox-label" for="toggleNoise">
-            <input type="checkbox" id="toggleNoise" class="checkbox-input">
-            <span class="checkbox-box" aria-hidden="true"></span>
-            <span class="checkbox-copy">
-              <strong>Simulate noisier sensors</strong>
-              <span class="subtext-note">ASSUMPTION: flat -4.0% sensitivity, not measured</span>
-            </span>
-          </label>
+        <div class="control-group noise-slider-group noise-toggle-group" id="noiseToggleContainer">
+          <div class="control-label-row">
+            <label for="sliderNoise" class="control-label">Simulate noisier sensors</label>
+            <span class="control-value-display" id="valNoise">-0.0%</span>
+          </div>
+          <input type="range" id="sliderNoise" min="0" max="15" step="0.5" value="0" class="range-slider"
+            aria-label="Simulate noisier sensors"
+            aria-valuemin="0" aria-valuemax="15" aria-valuenow="0" aria-valuetext="-0.0%">
+          <div class="slider-ticks" aria-hidden="true">
+            <span>0%</span>
+            <span>7.5%</span>
+            <span>15%</span>
+          </div>
+          <div class="control-readout subtext-note" id="noiseNote">ASSUMPTION: flat -0.0% sensitivity, not measured</div>
         </div>
 
         <div class="presets-block">
