@@ -1,34 +1,33 @@
 # NeuroSpec
 
-A planning tool that helps a district health programme choose the cheapest EEG headset specification (number of channels and sampling rate) that still meets its own limits for first-stage dementia pre-screening.
+NeuroSpec is a browser-based planning tool that helps community health programmes compare EEG headset specifications (channel count and sampling rate) by unit hardware cost, screening sensitivity, and unnecessary clinic referrals for first-stage dementia pre-screening. In the underlying classification task, the positive class is dementia (Alzheimer's disease plus frontotemporal dementia) versus healthy controls.
 
-**Team NeuroWell**, PVG's College of Engineering, Technology & Management (PVG COET), Pune.
+**Live Demo:** [https://neurospec.vercel.app](https://neurospec.vercel.app)
 
-Built for **Hack for Social Cause (VBYLD 2027)**, theme: Elderly Care & Healthy Ageing.
+It is built for public health programme managers and procurement teams, using an illustrative district screening camp in Maharashtra as an example scenario.
 
-> **Screening support only. Not a diagnosis.** NeuroSpec does not diagnose dementia and is not clinically validated.
+> **Pre-screening planning tool only, not a diagnostic tool.** NeuroSpec does not diagnose dementia, is not clinically validated, and does not replace a clinician's examination.
 
 ![NeuroSpec dashboard: recommended 8-channel setup](docs/screenshots/01-recommendation.png)
 
 ---
 
-## Problem and who it is for
+## What it is
 
-About 8.8 million Indians aged 60 or older are estimated to live with dementia, around 7.4% of that age group (Lee et al., 2023, *Alzheimer's & Dementia*, LASI-DAD). A district programme that wants to screen older adults at community camps with EEG headsets must decide how many channels to buy and at what sampling rate. Each choice changes the unit cost and how many healthy seniors are sent to clinics, but the buyer has no easy way to see that trade-off.
+When planning community dementia screening camps, programmes face a trade-off:
+- Too few EEG channels can miss cases or send too many healthy older adults for unnecessary clinic follow-up.
+- Full 19-channel clinical EEG setups cost more per headset.
 
-NeuroSpec is built for programme managers and public health procurement teams. For each setup from 2 to 19 channels it shows the cost, how many people with dementia are flagged, and how many healthy seniors are referred unnecessarily. An illustrative district camp in Maharashtra is used as the example setting.
+In the underlying evaluation, the classifier distinguishes a positive class of dementia (Alzheimer's disease plus frontotemporal dementia) from healthy controls. NeuroSpec lets a user:
+- **Set screening limits:** choose minimum sensitivity (`70%`–`95%`, default `75%`) and maximum extra referrals per 100 healthy adults (`10`–`50`, default `30`).
+- **Test a noisier-sensor assumption:** apply a flat sensitivity penalty (`0%`–`15%` in `0.5%` steps, default `0%`) to see how sensitive the choice is to lower signal quality.
+- **See the 1-SD recommendation:** selects the cheapest qualifying configuration whose sensitivity is within 1 standard deviation (SD across 10 cross-validation repeats) of the best-performing qualifying configuration.
+- **Explore a camp scenario:** estimate cases caught, healthy people referred, referral precision, total hardware cost, hardware cost per true case found, and referrals per true case for an editable cohort (defaults: `5,000` seniors, `25` headsets, `7.4%` assumed prevalence).
+- **Inspect all configurations:** compare configurations on a cost-vs-sensitivity chart and a sortable specification table.
+- **Edit unit costs & upload CSV results:** adjust chip/electrode/board costs or load your own trial CSV (`channels, sampling_rate_hz, sensitivity_pct, extra_referrals_per_100_healthy`).
+- **View a static Program Brief (EN / HI / MR)** for the default 8-channel scenario and export a clean **Print / PDF** summary.
 
----
-
-## What the tool does
-
-- **Set your limits:** a minimum sensitivity and a maximum number of extra referrals per 100 healthy seniors.
-- **Recommendation rule:** picks the cheapest setup whose sensitivity is within 1 standard deviation (SD) of the best qualifying setup. The rule is explained on screen.
-- **Evidence:** a cost-vs-sensitivity chart with a step line connecting best-value options, and a full specification table.
-- **Camp calculator:** for a chosen number of seniors, headsets and an assumed prevalence, it shows cases caught, healthy people referred, referral precision, total hardware cost, cost per true case found, and referrals per true case.
-- **Program Brief** in English, Hindi and Marathi (see below).
-- **Editable costs** and **CSV upload**, so a programme can use its own trial results.
-- **Real results by default.** Illustrative demo data is available only behind an explicit toggle, with a persistent red banner.
+By default, the dashboard opens on **REAL RUN** results computed from OpenNeuro dataset `ds004504`. Illustrative placeholder **DEMO DATA** is available only behind an explicit toggle (`Load demo data`), which turns on a red warning banner.
 
 ---
 
@@ -48,154 +47,110 @@ NeuroSpec is built for programme managers and public health procurement teams. F
 
 ---
 
-## Results at a glance
+## How it works (pipeline)
 
-Source: OpenNeuro `ds004504`, 88 participants, repeated stratified 5-fold cross-validation (10 repeats), 500 Hz. Costs are chip + electrodes only.
+The offline analysis in [`research/eeg_analysis.py`](research/eeg_analysis.py) runs the following pipeline:
 
-| Channels | Unit cost (INR) | Sensitivity | Extra referrals per 100 healthy |
-|---|---|---|---|
-| 2  | 4,713  | 78.6% ± 2.0 | 35.2 ± 6.7 |
-| 4  | 4,780  | 78.5% ± 3.5 | 45.5 ± 3.2 |
-| 8  | 9,588  | 77.8% ± 3.4 | 29.7 ± 7.4 |
-| 19 | 23,224 | 78.0% ± 2.7 | 23.8 ± 5.3 |
-
-Results at 250 Hz and 125 Hz are in `research/results/dashboard_results.csv` and are very close to these.
-
-How to read this:
-
-- Sensitivity is about 78% in every setup, because the decision threshold is calibrated on training folds to target at least 80% sensitivity. What differs between setups is the number of unnecessary referrals.
-- With the default limits (at least 75% sensitivity, at most 30 extra referrals per 100 healthy), the tool recommends **8 channels at 500 Hz**: INR 9,588 per unit, which saves INR 13,636 per unit compared with 19 channels.
-- The 8-channel setup meets the referral limit by only 0.3, and its result overlaps with the 19-channel result within one SD.
-- The 2- and 4-channel setups miss the referral limit under the default settings.
-
-Camp calculator example (defaults: 5,000 seniors, 25 headsets, 7.4% prevalence, 8 channels): about 288 of roughly 370 people with dementia are flagged, 1,375 healthy people are referred, and about 17.3% of referrals have dementia. Hardware costs INR 2,39,700 (chip + electrodes only), or INR 832 per true case found. These are illustrative scenario inputs, not measured data.
-
----
-
-## Quick start (dashboard)
-
-No build step and no Node.js needed. From the repository root:
-
-```bash
-python -m http.server 8080
-```
-
-Then open `http://localhost:8080/index.html` in a browser. Opening `index.html` directly also works.
-
----
-
-## Python setup
-
-Requires Python 3.10 or newer (tested on Python 3.12).
-
-```bash
-git clone https://github.com/0504Siddhi/Neurospec.git
-cd Neurospec
-
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-### Run the tests
-
-```bash
-pytest tests/ -v
-```
-
-The tests use synthetic data and the committed results files, so they do not need the EEG dataset.
-
----
-
-## Dataset (OpenNeuro ds004504)
-
-- **Source:** OpenNeuro `ds004504`, licence CC0. DOI: 10.18112/openneuro.ds004504.v1.0.7
-- **Recorded at:** 2nd Department of Neurology, AHEPA General University Hospital of Thessaloniki, Aristotle University of Thessaloniki, Greece.
-- **Participants:** 88 in total: 36 Alzheimer's disease (`A`), 23 frontotemporal dementia (`F`), 29 healthy controls (`C`).
-- **Recording:** Nihon Kohden EEG 2100, 19 scalp electrodes (10-20 system), resting state, eyes closed, wet conductive paste (skin impedance below 5 kOhm), 500 Hz.
-
-The raw dataset is not stored in this repository. To download it and point the pipeline at it:
-
-```bash
-pip install openneuro-py
-openneuro-py download --dataset ds004504 --target-dir ds004504-data
-
-# Tell the pipeline where it is (use the full path):
-# Linux/macOS:
-export NEUROSPEC_EEG_ROOT="$PWD/ds004504-data"
-# Windows PowerShell:
-$env:NEUROSPEC_EEG_ROOT="$PWD\ds004504-data"
-```
-
-The folder contains `participants.tsv` (subject IDs and groups) and `sub-XXX/eeg/*.set` (EEGLAB recordings).
-
----
-
-## Re-running the analysis
-
-```bash
-python research/eeg_analysis.py
-```
-
-Pipeline:
-
-1. **Input:** 19-channel `.set` recordings from `ds004504`.
-2. **Preprocessing:** 1-45 Hz band-pass filter and anti-aliased resampling to 500, 250 and 125 Hz.
-3. **Features:** 10-second non-overlapping windows; Welch power spectral density in the delta, theta, alpha, beta and gamma bands (absolute log power and relative power); one feature vector per participant (median across windows).
-4. **Validation:** logistic regression with repeated stratified 5-fold cross-validation (10 repeats) on participant-level features, so no participant appears in both training and test folds. Setups with 19, 8, 4 and 2 channels are compared.
-5. **Output:** `research/results/dashboard_results.csv`, `channel_comparison.csv` and `random_pairs.csv`.
-6. **Dashboard:** the numbers in `dashboard_results.csv` are stored in `data.js` as `REAL_RESULTS`; `app.js` uses them for the recommendation, chart and camp calculator.
+1. **Input & Labels:** Reads `participants.tsv` and 19-channel EEGLAB `.set` recordings (`500` Hz) from OpenNeuro `ds004504`. Positive class (`1`): dementia — Alzheimer's disease (`A`) plus Frontotemporal dementia (`F`). Negative class (`0`): Healthy controls (`C`).
+2. **Preprocessing:** Picks EEG channels, applies a `1.0`–`45.0` Hz band-pass filter (`mne`), and resamples (`raw.resample`) to `500`, `250`, and `125` Hz. Signals are split into non-overlapping `10`-second windows. (No artifact rejection or ICA is applied.)
+3. **Features:** Computes Welch power spectral density (`scipy.signal.welch`, `nperseg` up to `4` seconds) across 5 bands—delta (`1–4` Hz), theta (`4–8` Hz), alpha (`8–13` Hz), beta (`13–30` Hz), and gamma (`30–45` Hz)—extracting `log10` absolute power and relative power (`1–45` Hz total). Window features are aggregated per participant using the **median**.
+4. **Channel Subsets:** Evaluates 4 predefined subsets (`19`, `8`, `4`, and `2` channels: `Fp1, Fp2` for 2 ch; `+ C3, C4` for 4 ch; `+ F3, F4, P3, P4` for 8 ch; full 10–20 for 19 ch) at `500`, `250`, and `125` Hz, plus 20 random 2-channel pairs at `500` Hz.
+5. **Model & Subject-Level Cross-Validation:** `StandardScaler` + `LogisticRegression(max_iter=3000, class_weight="balanced", random_state=42)` evaluated with **10 repeats of 5-fold stratified cross-validation at the participant level** (one row per participant per rate, so no participant appears in both train and test folds). Within each outer training fold, a 5-fold inner CV tunes the probability threshold to target `>= 80%` sensitivity on training data before evaluating on the outer test fold.
+6. **Outputs & Dashboard:** Writes [`research/results/dashboard_results.csv`](research/results/dashboard_results.csv) and [`research/results/random_pairs.csv`](research/results/random_pairs.csv) (and `channel_comparison_repeated.csv` to the configured output directory). The dashboard stores the 12 configurations (mean and SD across 10 cross-validation repeats) in [`data.js`](data.js) (`REAL_RESULTS`) and computes hardware costs (`chip + ESP32 + electrodes`), Pareto frontier, 1-SD recommendation, and camp projections in [`app.js`](app.js).
 
 More detail: [`research/README.md`](research/README.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
-## Program Brief (English, Hindi, Marathi)
+## Results shown by the tool and what they do not prove
 
-The dashboard includes a short brief for programme managers that restates the selected setup and the camp numbers in plain language. It only explains numbers computed by the tool. It does not compute new figures.
+From [`research/results/dashboard_results.csv`](research/results/dashboard_results.csv) and [`data.js`](data.js) (`ds004504`, `88` participants: `59` AD+FTD, `29` controls; 10-repeat 5-fold participant-level CV, `500` Hz, threshold calibrated on training folds for `>= 80%` sensitivity):
+
+| Channels | Unit cost (INR, chip + ESP32 + electrodes) | Sensitivity (% ± SD across 10 cross-validation repeats) | Extra referrals per 100 healthy (± SD across 10 cross-validation repeats) |
+|---|---|---|---|
+| 2 (`Fp1, Fp2`) | 4,713 | 78.6 ± 2.0 | 35.2 ± 6.7 |
+| 4 (`Fp1, Fp2, C3, C4`) | 4,780 | 78.5 ± 3.5 | 45.5 ± 3.2 |
+| 8 (`Fp1, Fp2, F3, F4, C3, C4, P3, P4`) | 9,588 | 77.8 ± 3.4 | 29.7 ± 7.4 |
+| 19 (full 10–20) | 23,224 | 78.0 ± 2.7 | 23.8 ± 5.3 |
+
+*(Results at `250` Hz and `125` Hz are in [`research/results/dashboard_results.csv`](research/results/dashboard_results.csv) and are within `0.0–1.0` points of the `500` Hz values; sampling rate does not change cost in the model.)*
+
+At the 80% training calibration, test sensitivity is about 78%, below the 80 to 90% range a geriatrician suggested, and no tested setup reaches it.
+
+Under the default limits (`>= 75%` sensitivity, `<= 30` extra referrals per 100 healthy, `0%` noise penalty):
+- The 1-SD rule selects **8 channels at 500 Hz** (`₹9,588` unit cost; meets the `30` referral limit by `0.3` and sits within 1 SD across 10 cross-validation repeats of 19 channels at `78.0% ± 2.7`).
+- The 2- and 4-channel setups exceed the `30` extra-referral limit (`35.2` and `45.5`).
+- In the default camp scenario (`5,000` seniors, `25` headsets, `7.4%` assumed prevalence), 8 channels at `500` Hz catches about `288` of `~370` expected cases and refers `1,375` healthy people (`17.3%` referral precision), with hardware cost `₹2,39,700` (`₹832` per true case found, `5.8` referrals per true case).
+
+**What these results do NOT prove:**
+- They do not establish clinical sensitivity or specificity in real-world screening camps.
+- They do not establish that 8-channel or dry-electrode hardware performs as well as hospital EEG.
+- Because `channel_comparison_repeated.csv` is written outside the repo by `eeg_analysis.py` (`NEUROSPEC_EEG_OUTPUT`), the SD values (SD across 10 cross-validation repeats) in `data.js` cannot be verified solely from `research/results/dashboard_results.csv` without re-running the pipeline on `ds004504`.
+- The Program Brief panel in the dashboard displays static template text from [`ai/briefs.json`](ai/briefs.json) for the default 8-channel scenario and does not update dynamically when sliders or camp inputs change.
+
+---
+
+## Limitations
+
+- **Single dataset, hospital data in Greece:** All metrics come from one 88-participant hospital dataset (`ds004504`) recorded in Greece. Results are **not** externally validated and **not** validated in India or on Indian populations.
+- **Wet electrodes vs low-cost dry sensors:** `ds004504` was recorded using clinical wet electrodes with conductive paste (`< 5 kΩ` skin impedance, resting state). Low-cost dry or semi-dry sensors in community camps will have higher contact impedance and more movement artifacts. Published dry-vs-wet comparisons mostly test healthy volunteers on research headsets (none test dementia detection), and several report dry electrodes diverging most in the delta and theta bands—which NeuroSpec's 1–45 Hz features rely on.
+- **Sensor penalty is an assumption, not a measurement:** The dashboard's `"Simulate noisier sensors"` slider (`0%`–`15%`, default `0%`) subtracts a flat percentage-point penalty chosen by the user. It is an illustrative assumption, not measured dry-sensor data. (A separate computational Gaussian-noise script exists in [`research/noise_experiment.py`](research/noise_experiment.py) and is not wired into the dashboard.)
+- **Added value over paper tests not proven:** Paper-and-pencil cognitive tests (MMSE, Mini-Cog, GPCOG) have near-zero hardware cost. Any added value of EEG over those tests is not shown here.
+- **Prevalence and camp inputs are assumptions:** The default `7.4%` dementia prevalence is an editable assumption based on Lee et al., 2023 (*Alzheimer's & Dementia*, LASI-DAD national estimate for adults 60+ in India); other estimates differ (e.g., `8.44%`, Jin et al., 2023). The camp size (`5,000` seniors) and headset count (`25`) are illustrative.
+- **Cost excludes board, case, battery and leads:** Headline costs (`₹4,713`–`₹23,224`, chip + ESP32 + electrodes) cover front-end ADS1299 chip(s), an ESP32 board (`₹349`), and `1` electrode per channel (`₹33.44` each) from unverified listing prices (check date not recorded). They exclude PCB fabrication, enclosure/case, battery, leads, reference/bias electrodes, and operating costs.
+
+---
+
+## How to run
+
+### 1. Web dashboard
+No build step or Node.js required (internet access is needed for Chart.js CDN and fonts):
 
 ```bash
-# Template mode (default, no API key needed):
-python ai/generate_brief.py
-
-# Optional LLM mode (key read from an environment variable, never stored in the code):
-export BRIEF_API_KEY="your_key"          # Linux/macOS
-$env:BRIEF_API_KEY="your_key"            # Windows PowerShell
-python ai/generate_brief.py
+python -m http.server 8080
 ```
 
-Output is written to `ai/briefs.json`. In LLM mode, every number in the generated text is checked against the input values, and the text is rejected if any number does not match. The briefs that ship with this repository are **template-generated**, and the dashboard labels them "Template-generated summary". Hindi and Marathi text should be reviewed by a fluent reader before use.
+Open `http://localhost:8080/index.html` in a browser. (Use a local HTTP server rather than `file://` so `fetch('ai/briefs.json')` loads cleanly without falling back to the embedded copy.)
+
+### 2. Python environment & smoke tests
+```bash
+git clone https://github.com/0504Siddhi/Neurospec.git
+cd Neurospec
+python -m venv venv
+# Windows: .\venv\Scripts\activate
+# Linux/macOS: source venv/bin/activate
+pip install -r requirements.txt
+pytest tests/ -v
+```
+
+`pytest` runs synthetic EEG pipeline smoke tests, CSV schema checks, and brief number-validation checks without needing `ds004504`.
+
+### 3. Re-running the EEG analysis (requires dataset download)
+```bash
+pip install openneuro-py
+openneuro-py download --dataset ds004504 --target-dir ds004504-data
+# Windows PowerShell: $env:NEUROSPEC_EEG_ROOT="$PWD\ds004504-data"
+# Linux/macOS:        export NEUROSPEC_EEG_ROOT="$PWD/ds004504-data"
+python research/eeg_analysis.py
+```
+
+### 4. Regenerating Program Briefs
+```bash
+python ai/generate_brief.py
+```
+Runs in deterministic template mode by default and writes [`ai/briefs.json`](ai/briefs.json). Optional LLM mode reads `BRIEF_API_KEY` from an environment variable and rejects outputs containing numbers not in the supplied metrics. Hindi and Marathi text should be reviewed by a fluent reader before use.
 
 ---
 
-## Limitations and honest scope
+## Data source and license
 
-- **Pre-screening only.** Not a diagnostic device and not clinically validated. It does not replace a physician's examination.
-- **One dataset, one population.** All results come from a single hospital dataset recorded in Greece. They are not validated on Indian populations, and there is no external validation.
-- **Wet electrodes.** The recordings used conductive paste and skin preparation in a hospital. Low-cost dry or semi-dry sensors will have higher contact impedance and more movement artefacts, so real-world performance is likely lower. The dashboard's "simulate noisier sensors" option applies a flat -4.0% sensitivity. It is an assumption, not a measurement.
-- **Prevalence is an assumption.** The default 7.4% is the national estimate for adults aged 60+ in India (Lee et al., 2023, *Alzheimer's & Dementia*; LASI-DAD). Other studies report different values, for example 8.44% (Jin et al., 2023, *Neuroepidemiology*). It is editable.
-- **Scenario inputs are illustrative.** The camp size (5,000 seniors) and headset count (25) are example values, not measured data.
-- **Cost scope.** Headline costs are chip + electrodes only, from listing prices to be confirmed (check date not recorded). The 2-channel build uses a 4-channel chip, and the 19-channel build uses 20 channels of chip capacity. Sampling rate does not change cost in this model. Costs exclude PCB, enclosure, battery, leads, reference electrodes and operating costs.
-- **Comparison with free tests.** Paper-and-pencil tests such as MMSE and Mini-Cog have near-zero hardware cost. The added value of EEG over these tests is not shown here.
+- **Dataset:** OpenNeuro `ds004504`, CC0 license.
+- **DOI:** 10.18112/openneuro.ds004504.v1.0.7
+- **Recording hospital / site:** 2nd Department of Neurology, AHEPA General University Hospital of Thessaloniki, Aristotle University of Thessaloniki, Greece
+- **Software license:** MIT License — see [`LICENSE`](LICENSE).
 
 ---
 
-## Repository layout
+## Authors
 
-| Path | Purpose |
-|---|---|
-| `index.html`, `style.css`, `app.js`, `data.js` | Dashboard: interface, recommendation logic, charts, results data |
-| `research/` | EEG analysis pipeline and results CSVs |
-| `ai/` | Program Brief generator and generated briefs |
-| `docs/ARCHITECTURE.md` | Pipeline description and file map |
-| `tests/` | Smoke tests and a sample CSV for the upload feature |
-
----
-
-## Licence
-
-MIT. See [LICENSE](LICENSE).
+- Team NeuroWell, PVG's COET&M, Pune.
